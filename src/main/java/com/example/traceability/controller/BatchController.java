@@ -48,4 +48,5 @@ public class BatchController {
     }
 
     // Dashboard summary MVP functionality added here.
+    // Hotfix added directly to development branch
 }
