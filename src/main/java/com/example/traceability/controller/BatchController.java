@@ -19,4 +19,6 @@ public class BatchController {
         batches.add(batch);
         return batch;
     }
+
+    // Hotfix added directly to development branch
 }
