@@ -313,140 +313,194 @@ function parseCSVLine(text, delimiter = ',') {
     return result.filter(row => row.length > 0 && row.some(cell => cell.length > 0));
 }
 
-function handleCSVUpload(event) {
+let parsedBatchesToImport = [];
+
+function parseBatchesFromText(text) {
+    if (!text || !text.trim()) return [];
+
+    // Strip BOM
+    text = text.replace(/^\uFEFF/, '').trim();
+
+    // Auto-detect delimiter
+    const firstLine = text.split(/\r\n|\n|\r/)[0];
+    const delimiter = (firstLine.includes(';') && !firstLine.includes(',')) ? ';' : ',';
+
+    const rows = parseCSVLine(text, delimiter);
+    if (!rows || rows.length === 0) return [];
+
+    const firstRow = rows[0].map(c => c.toLowerCase());
+    let nameCol = -1;
+    let qtyCol = -1;
+
+    firstRow.forEach((col, index) => {
+        if (col.includes('product') || col.includes('name') || col.includes('item') || col.includes('title')) {
+            nameCol = index;
+        }
+        if (col.includes('qty') || col.includes('quantity') || col.includes('units') || col.includes('count')) {
+            qtyCol = index;
+        }
+    });
+
+    let startIndex = 1;
+
+    // Fallback if header wasn't found
+    if (nameCol === -1 || qtyCol === -1) {
+        const isFirstRowData = rows[0].some(cell => !isNaN(parseInt(cell.replace(/,/g, ''))));
+        if (isFirstRowData) {
+            startIndex = 0;
+        }
+
+        if (rows[0].length === 2) {
+            const col0IsNum = !isNaN(parseInt(rows[startIndex][0].replace(/,/g, '')));
+            qtyCol = col0IsNum ? 0 : 1;
+            nameCol = col0IsNum ? 1 : 0;
+        } else if (rows[0].length >= 4) {
+            nameCol = 1;
+            qtyCol = 2;
+        } else {
+            nameCol = 0;
+            qtyCol = 1;
+        }
+    }
+
+    const batches = [];
+    for (let i = startIndex; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row || row.length <= Math.max(nameCol, qtyCol)) continue;
+
+        const rawName = row[nameCol] ? row[nameCol].replace(/^["']|["']$/g, '').trim() : '';
+        const rawQty = row[qtyCol] ? row[qtyCol].replace(/,/g, '').trim() : '';
+        const quantity = parseInt(rawQty);
+
+        if (rawName && !isNaN(quantity) && quantity > 0) {
+            batches.push({
+                productName: rawName,
+                quantity: quantity
+            });
+        }
+    }
+
+    return batches;
+}
+
+function updateImportPreview(batches) {
+    parsedBatchesToImport = batches;
+    const previewContainer = document.getElementById('csvPreviewContainer');
+    const previewBody = document.getElementById('csvPreviewBody');
+    const previewCount = document.getElementById('csvPreviewCount');
+    const confirmBtn = document.getElementById('confirmImportBtn');
+    const alertBox = document.getElementById('csvStatusAlert');
+
+    alertBox.classList.add('d-none');
+    previewBody.innerHTML = '';
+
+    if (batches.length > 0) {
+        batches.slice(0, 10).forEach((b, idx) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="text-muted">${idx + 1}</td>
+                <td class="fw-semibold text-dark">${b.productName}</td>
+                <td><span class="badge bg-secondary">${b.quantity.toLocaleString()} units</span></td>
+            `;
+            previewBody.appendChild(tr);
+        });
+
+        if (batches.length > 10) {
+            const moreTr = document.createElement('tr');
+            moreTr.innerHTML = `<td colspan="3" class="text-center text-muted small py-1">... and ${batches.length - 10} more rows</td>`;
+            previewBody.appendChild(moreTr);
+        }
+
+        previewCount.innerText = `${batches.length} batch(es) detected`;
+        previewContainer.classList.remove('d-none');
+        confirmBtn.removeAttribute('disabled');
+    } else {
+        previewContainer.classList.add('d-none');
+        confirmBtn.setAttribute('disabled', 'true');
+    }
+}
+
+function handleFileSelect(event) {
     const file = event.target.files[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = async function(e) {
+    reader.onload = function(e) {
+        const text = e.target.result;
+        document.getElementById('csvTextInput').value = text;
+        const batches = parseBatchesFromText(text);
+        updateImportPreview(batches);
+    };
+    reader.readAsText(file);
+}
+
+function handleTextPreview() {
+    const text = document.getElementById('csvTextInput').value;
+    const batches = parseBatchesFromText(text);
+    updateImportPreview(batches);
+}
+
+async function executeBatchImport() {
+    if (!parsedBatchesToImport || parsedBatchesToImport.length === 0) return;
+
+    const confirmBtn = document.getElementById('confirmImportBtn');
+    const originalText = confirmBtn.innerHTML;
+    confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Importing...';
+    confirmBtn.setAttribute('disabled', 'true');
+
+    let importSuccess = false;
+
+    try {
+        const bulkRes = await fetch(`${API_BASE}/bulk`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(parsedBatchesToImport)
+        });
+        if (bulkRes.ok) {
+            importSuccess = true;
+        }
+    } catch (err) {
+        console.warn("Bulk endpoint call failed, falling back to sequential batch creation...", err);
+    }
+
+    if (!importSuccess) {
         try {
-            let text = e.target.result;
-            if (!text) {
-                alert("The selected CSV file is empty.");
-                return;
-            }
-
-            // Remove UTF-8 BOM if present (added by Excel)
-            text = text.replace(/^\uFEFF/, '').trim();
-
-            // Detect delimiter (comma or semicolon)
-            const firstLine = text.split(/\r\n|\n|\r/)[0];
-            const delimiter = (firstLine.includes(';') && !firstLine.includes(',')) ? ';' : ',';
-
-            const rows = parseCSVLine(text, delimiter);
-            if (!rows || rows.length === 0) {
-                alert("No readable data found in the CSV file.");
-                return;
-            }
-
-            // Inspect header row
-            const firstRow = rows[0].map(c => c.toLowerCase());
-            let nameCol = -1;
-            let qtyCol = -1;
-
-            firstRow.forEach((col, index) => {
-                if (col.includes('product') || col.includes('name') || col.includes('item') || col.includes('title')) {
-                    nameCol = index;
-                }
-                if (col.includes('qty') || col.includes('quantity') || col.includes('units') || col.includes('count')) {
-                    qtyCol = index;
-                }
-            });
-
-            let startIndex = 1;
-
-            // If header was not explicitly found, fallback to auto-detecting column types
-            if (nameCol === -1 || qtyCol === -1) {
-                // Check if row 0 has numbers
-                const isFirstRowData = rows[0].some(cell => !isNaN(parseInt(cell.replace(/,/g, ''))));
-                if (isFirstRowData) {
-                    startIndex = 0;
-                }
-
-                // If 2 columns: column with digits is qty, the other is name
-                if (rows[0].length === 2) {
-                    const col0IsNum = !isNaN(parseInt(rows[startIndex][0].replace(/,/g, '')));
-                    qtyCol = col0IsNum ? 0 : 1;
-                    nameCol = col0IsNum ? 1 : 0;
-                } else if (rows[0].length >= 4) {
-                    // Export format: Batch ID (0), Product Name (1), Quantity (2), Status (3)
-                    nameCol = 1;
-                    qtyCol = 2;
-                } else {
-                    nameCol = 0;
-                    qtyCol = 1;
-                }
-            }
-
-            const batchesToCreate = [];
-            for (let i = startIndex; i < rows.length; i++) {
-                const row = rows[i];
-                if (!row || row.length <= Math.max(nameCol, qtyCol)) continue;
-
-                const rawName = row[nameCol] ? row[nameCol].replace(/^["']|["']$/g, '').trim() : '';
-                const rawQty = row[qtyCol] ? row[qtyCol].replace(/,/g, '').trim() : '';
-                const quantity = parseInt(rawQty);
-
-                if (rawName && !isNaN(quantity) && quantity > 0) {
-                    batchesToCreate.push({
-                        productName: rawName,
-                        quantity: quantity
-                    });
-                }
-            }
-
-            if (batchesToCreate.length === 0) {
-                alert("No valid batch rows found. Expected columns: Product Name, Quantity (e.g. 'Aspirin, 1000')");
-                return;
-            }
-
-            // Try bulk import endpoint first
-            let importSuccess = false;
-            try {
-                const bulkRes = await fetch(`${API_BASE}/bulk`, {
+            await Promise.all(parsedBatchesToImport.map(batch => 
+                fetch(API_BASE, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(batchesToCreate)
-                });
-                if (bulkRes.ok) {
-                    importSuccess = true;
-                }
-            } catch (err) {
-                console.warn("Bulk endpoint unavailable, falling back to standard create...", err);
-            }
-
-            // Fallback: If bulk endpoint returned 404 or failed, create batches individually
-            if (!importSuccess) {
-                try {
-                    await Promise.all(batchesToCreate.map(batch => 
-                        fetch(API_BASE, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(batch)
-                        })
-                    ));
-                    importSuccess = true;
-                } catch (err) {
-                    console.error("Individual batch creation failed:", err);
-                }
-            }
-
-            if (importSuccess) {
-                alert(`Successfully imported ${batchesToCreate.length} batch(es) into the portal!`);
-                await loadBatches();
-            } else {
-                alert("Failed to import batches. Make sure the Spring Boot server is running.");
-            }
-
-        } catch (error) {
-            console.error("Error reading CSV file:", error);
-            alert("Error parsing CSV: " + error.message);
-        } finally {
-            event.target.value = '';
+                    body: JSON.stringify(batch)
+                })
+            ));
+            importSuccess = true;
+        } catch (err) {
+            console.error("Individual batch fallback creation failed:", err);
         }
-    };
+    }
 
-    reader.readAsText(file);
+    confirmBtn.innerHTML = originalText;
+
+    if (importSuccess) {
+        alert(`Successfully imported ${parsedBatchesToImport.length} batch(es) into the portal!`);
+        
+        // Reset form & modal
+        document.getElementById('csvFileInput').value = '';
+        document.getElementById('csvTextInput').value = '';
+        updateImportPreview([]);
+        
+        const modalEl = document.getElementById('importCsvModal');
+        const modalInstance = bootstrap.Modal.getInstance(modalEl);
+        if (modalInstance) {
+            modalInstance.hide();
+        }
+
+        await loadBatches();
+    } else {
+        const alertBox = document.getElementById('csvStatusAlert');
+        alertBox.innerText = "Failed to import batches. Make sure your Spring Boot server is running.";
+        alertBox.classList.remove('d-none');
+        confirmBtn.removeAttribute('disabled');
+    }
 }
 
 function getStatusBadge(status) {

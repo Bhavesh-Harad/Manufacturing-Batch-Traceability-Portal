@@ -9,7 +9,7 @@
     <!-- FontAwesome 6 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Custom Modern Styling -->
-    <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="/style.css?v=3.0">
 </head>
 <body>
 
@@ -115,8 +115,7 @@
                 <button class="btn btn-success" onclick="exportToCSV()">
                     <i class="fas fa-file-export"></i> Export Data
                 </button>
-                <input type="file" id="csvFileInput" accept=".csv" style="display: none;" onchange="handleCSVUpload(event)">
-                <button class="btn btn-secondary" onclick="document.getElementById('csvFileInput').click()">
+                <button class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#importCsvModal">
                     <i class="fas fa-file-arrow-up"></i> Import CSV
                 </button>
             </div>
@@ -215,10 +214,70 @@
     </div>
 </div>
 
+<!-- Import CSV Modal -->
+<div class="modal fade" id="importCsvModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title fw-bold text-dark">
+                    <i class="fas fa-file-csv text-success me-2"></i>Import Batches from CSV
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold text-secondary small text-uppercase">Option 1: Choose a CSV File</label>
+                    <input type="file" id="csvFileInput" class="form-control form-control-lg fs-6" accept=".csv,text/csv,text/plain" onchange="handleFileSelect(event)">
+                    <div class="form-text">Supported: <code>Product Name, Quantity</code> or exported CSV files.</div>
+                </div>
+
+                <div class="d-flex align-items-center my-3">
+                    <hr class="flex-grow-1">
+                    <span class="px-3 text-muted small fw-bold text-uppercase">OR Paste CSV Text</span>
+                    <hr class="flex-grow-1">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold text-secondary small text-uppercase">Option 2: Paste Raw CSV Content</label>
+                    <textarea id="csvTextInput" class="form-control font-monospace" rows="4" placeholder="Product Name,Quantity&#10;Ibuprofen 200mg,50000&#10;Paracetamol 500mg,25000" oninput="handleTextPreview()"></textarea>
+                </div>
+
+                <!-- Live Preview Area -->
+                <div id="csvPreviewContainer" class="d-none mt-3 p-3 rounded-3 bg-light border">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="fw-bold small text-dark"><i class="fas fa-eye text-primary me-1"></i>Parsed Data Preview</span>
+                        <span id="csvPreviewCount" class="badge bg-primary">0 batches ready</span>
+                    </div>
+                    <div class="table-responsive" style="max-height: 180px;">
+                        <table class="table table-sm table-bordered bg-white mb-0 small">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Product Name</th>
+                                    <th>Quantity</th>
+                                </tr>
+                            </thead>
+                            <tbody id="csvPreviewBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="csvStatusAlert" class="mt-3 d-none alert alert-danger small py-2 mb-0"></div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" id="confirmImportBtn" class="btn btn-success" onclick="executeBatchImport()" disabled>
+                    <i class="fas fa-cloud-arrow-up me-1"></i>Import Batches
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <!-- Bootstrap Bundle JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="/app.js"></script>
+<script src="/app.js?v=3.0"></script>
 </body>
 </html>
