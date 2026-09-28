@@ -90,7 +90,11 @@ function renderTable(batches) {
         const tr = document.createElement('tr');
         
         tr.innerHTML = `
-            <td><small class="text-muted">${batch.id}</small></td>
+            <td>
+                <a href="#" class="text-primary text-decoration-none fw-bold" onclick="viewAuditLog('${batch.id}')">
+                    <i class="fas fa-qrcode me-1"></i>${batch.id}
+                </a>
+            </td>
             <td class="fw-bold">${batch.productName}</td>
             <td>${batch.quantity}</td>
             <td><span class="badge ${badgeClass}">${batch.status}</span></td>
@@ -114,20 +118,104 @@ function renderTable(batches) {
     });
 }
 
+let statusChartInstance = null;
+
 function updateDashboard(batches) {
-    let totals = { total: 0, production: 0, qa: 0, approved: 0 };
+    let totals = { created: 0, production: 0, qa: 0, approved: 0, rejected: 0 };
     
     batches.forEach(batch => {
-        totals.total++;
-        if (batch.status === 'IN_PRODUCTION') totals.production++;
+        if (batch.status === 'CREATED') totals.created++;
+        else if (batch.status === 'IN_PRODUCTION') totals.production++;
         else if (batch.status === 'QA_REVIEW') totals.qa++;
         else if (batch.status === 'APPROVED') totals.approved++;
+        else if (batch.status === 'REJECTED') totals.rejected++;
     });
 
-    document.getElementById('total-count').innerText = totals.total;
+    document.getElementById('total-count').innerText = batches.length;
     document.getElementById('production-count').innerText = totals.production;
     document.getElementById('qa-count').innerText = totals.qa;
     document.getElementById('approved-count').innerText = totals.approved;
+
+    renderChart(totals);
+}
+
+function renderChart(totals) {
+    const ctx = document.getElementById('statusChart').getContext('2d');
+    
+    if (statusChartInstance) {
+        statusChartInstance.destroy();
+    }
+
+    statusChartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Created', 'In Production', 'QA Review', 'Approved', 'Rejected'],
+            datasets: [{
+                data: [totals.created, totals.production, totals.qa, totals.approved, totals.rejected],
+                backgroundColor: ['#6c757d', '#ffc107', '#0dcaf0', '#198754', '#dc3545']
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'right' }
+            }
+        }
+    });
+}
+
+async function viewAuditLog(id) {
+    try {
+        const response = await fetch(`${API_BASE}/${id}`);
+        const batch = await response.json();
+        
+        document.getElementById('auditBatchTitle').innerText = `Batch ID: ${batch.id} - ${batch.productName}`;
+        
+        const timeline = document.getElementById('auditTimeline');
+        timeline.innerHTML = '';
+        
+        if (batch.auditLogs && batch.auditLogs.length > 0) {
+            batch.auditLogs.forEach(log => {
+                timeline.innerHTML += `
+                    <div class="mb-3 position-relative">
+                        <i class="fas fa-circle text-primary position-absolute" style="left: -21px; top: 4px; background: white;"></i>
+                        <p class="mb-0 text-muted small">${log}</p>
+                    </div>
+                `;
+            });
+        } else {
+            timeline.innerHTML = '<p class="text-muted">No audit logs found.</p>';
+        }
+        
+        const modal = new bootstrap.Modal(document.getElementById('auditLogModal'));
+        modal.show();
+    } catch (error) {
+        console.error('Error fetching audit log:', error);
+    }
+}
+
+function exportToCSV() {
+    fetch(API_BASE)
+        .then(res => res.json())
+        .then(batches => {
+            if (batches.length === 0) return alert('No data to export!');
+            
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Batch ID,Product Name,Quantity,Status\n";
+            
+            batches.forEach(b => {
+                csvContent += `${b.id},${b.productName},${b.quantity},${b.status}\n`;
+            });
+            
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "batch_export.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
 }
 
 function getStatusBadge(status) {

@@ -1,10 +1,14 @@
 package com.example.traceability.model;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class Batch {
     private String id;
     private String productName;
     private int quantity;
     private String status;
+    private List<String> auditLogs = new ArrayList<>();
 
     public Batch() {}
 
@@ -26,4 +30,7 @@ public class Batch {
     
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+
+    public List<String> getAuditLogs() { return auditLogs; }
+    public void addAuditLog(String log) { this.auditLogs.add(log); }
 }

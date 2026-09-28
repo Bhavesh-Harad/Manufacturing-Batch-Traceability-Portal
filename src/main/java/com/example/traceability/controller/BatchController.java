@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 @RestController
 @RequestMapping("/api/batches")
@@ -13,10 +15,15 @@ public class BatchController {
     
     private List<Batch> batches = new ArrayList<>();
 
+    private String getCurrentTime() {
+        return LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+    }
+
     @PostMapping
     public Batch createBatch(@RequestBody Batch batch) {
-        batch.setId(UUID.randomUUID().toString());
+        batch.setId(UUID.randomUUID().toString().substring(0, 8).toUpperCase());
         batch.setStatus("CREATED");
+        batch.addAuditLog(getCurrentTime() + " - System: Batch Registered successfully.");
         batches.add(batch);
         return batch;
     }
@@ -36,6 +43,7 @@ public class BatchController {
         Batch batch = getBatchById(id);
         if (batch != null) {
             batch.setStatus(status);
+            batch.addAuditLog(getCurrentTime() + " - Operator: Status transitioned to " + status + ".");
         }
         return batch;
     }
