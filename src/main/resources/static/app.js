@@ -81,7 +81,17 @@ function renderTable(batches) {
     tbody.innerHTML = '';
 
     if (batches.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No batches found</td></tr>';
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="text-center py-5">
+                    <div class="text-muted">
+                        <i class="fas fa-boxes-packing fa-3x mb-3 text-secondary opacity-50"></i>
+                        <h6 class="fw-bold text-secondary">No manufacturing batches found</h6>
+                        <p class="small text-muted mb-0">Create a new batch or import a CSV file to begin tracking.</p>
+                    </div>
+                </td>
+            </tr>
+        `;
         return;
     }
 
@@ -91,25 +101,34 @@ function renderTable(batches) {
         
         tr.innerHTML = `
             <td>
-                <a href="#" class="text-primary text-decoration-none fw-bold" onclick="viewAuditLog('${batch.id}')">
-                    <i class="fas fa-qrcode me-1"></i>${batch.id}
-                </a>
+                <span class="batch-id-pill" onclick="viewAuditLog('${batch.id}')" title="Click to view full traceability timeline">
+                    <i class="fas fa-qrcode"></i> ${batch.id}
+                </span>
             </td>
-            <td class="fw-bold">${batch.productName}</td>
-            <td>${batch.quantity}</td>
-            <td><span class="badge ${badgeClass}">${batch.status}</span></td>
             <td>
-                <div class="dropdown">
-                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                <div class="fw-bold text-dark">${batch.productName}</div>
+                <div class="small text-muted">ID: #${batch.id}</div>
+            </td>
+            <td>
+                <span class="fw-semibold text-secondary">${batch.quantity.toLocaleString()}</span>
+                <span class="small text-muted ms-1">units</span>
+            </td>
+            <td>
+                <span class="badge ${badgeClass}">${batch.status}</span>
+            </td>
+            <td style="text-align: right;">
+                <div class="dropdown d-inline-block">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                         Update Status
                     </button>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="#" onclick="updateStatus('${batch.id}', 'CREATED')">Created</a></li>
-                        <li><a class="dropdown-item" href="#" onclick="updateStatus('${batch.id}', 'IN_PRODUCTION')">In Production</a></li>
-                        <li><a class="dropdown-item" href="#" onclick="updateStatus('${batch.id}', 'QA_REVIEW')">QA Review</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item text-success" href="#" onclick="updateStatus('${batch.id}', 'APPROVED')">Approved</a></li>
-                        <li><a class="dropdown-item text-danger" href="#" onclick="updateStatus('${batch.id}', 'REJECTED')">Rejected</a></li>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3">
+                        <li><h6 class="dropdown-header text-uppercase small fw-bold">Set Lifecycle Status</h6></li>
+                        <li><a class="dropdown-item py-2" href="#" onclick="updateStatus('${batch.id}', 'CREATED')"><i class="fas fa-circle text-secondary me-2 small"></i>Created</a></li>
+                        <li><a class="dropdown-item py-2" href="#" onclick="updateStatus('${batch.id}', 'IN_PRODUCTION')"><i class="fas fa-gears text-warning me-2 small"></i>In Production</a></li>
+                        <li><a class="dropdown-item py-2" href="#" onclick="updateStatus('${batch.id}', 'QA_REVIEW')"><i class="fas fa-microscope text-info me-2 small"></i>QA Review</a></li>
+                        <li><hr class="dropdown-divider my-1"></li>
+                        <li><a class="dropdown-item py-2 text-success fw-semibold" href="#" onclick="updateStatus('${batch.id}', 'APPROVED')"><i class="fas fa-circle-check me-2"></i>Approved</a></li>
+                        <li><a class="dropdown-item py-2 text-danger fw-semibold" href="#" onclick="updateStatus('${batch.id}', 'REJECTED')"><i class="fas fa-circle-xmark me-2"></i>Rejected</a></li>
                     </ul>
                 </div>
             </td>
@@ -131,10 +150,10 @@ function updateDashboard(batches) {
         else if (batch.status === 'REJECTED') totals.rejected++;
     });
 
-    document.getElementById('total-count').innerText = batches.length;
-    document.getElementById('production-count').innerText = totals.production;
-    document.getElementById('qa-count').innerText = totals.qa;
-    document.getElementById('approved-count').innerText = totals.approved;
+    document.getElementById('total-count').innerText = batches.length.toLocaleString();
+    document.getElementById('production-count').innerText = totals.production.toLocaleString();
+    document.getElementById('qa-count').innerText = totals.qa.toLocaleString();
+    document.getElementById('approved-count').innerText = totals.approved.toLocaleString();
 
     renderChart(totals);
 }
@@ -146,20 +165,51 @@ function renderChart(totals) {
         statusChartInstance.destroy();
     }
 
+    const totalValues = totals.created + totals.production + totals.qa + totals.approved + totals.rejected;
+
     statusChartInstance = new Chart(ctx, {
         type: 'doughnut',
         data: {
             labels: ['Created', 'In Production', 'QA Review', 'Approved', 'Rejected'],
             datasets: [{
-                data: [totals.created, totals.production, totals.qa, totals.approved, totals.rejected],
-                backgroundColor: ['#6c757d', '#ffc107', '#0dcaf0', '#198754', '#dc3545']
+                data: totalValues === 0 ? [1] : [totals.created, totals.production, totals.qa, totals.approved, totals.rejected],
+                backgroundColor: totalValues === 0 
+                    ? ['#e2e8f0'] 
+                    : ['#94a3b8', '#f59e0b', '#06b6d4', '#10b981', '#ef4444'],
+                borderWidth: 2,
+                borderColor: '#ffffff',
+                hoverOffset: 4
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            cutout: '72%',
             plugins: {
-                legend: { position: 'right' }
+                legend: {
+                    display: true,
+                    position: 'right',
+                    labels: {
+                        boxWidth: 10,
+                        boxHeight: 10,
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                        font: {
+                            family: "'Plus Jakarta Sans', sans-serif",
+                            size: 11,
+                            weight: '500'
+                        },
+                        padding: 10
+                    }
+                },
+                tooltip: {
+                    enabled: totalValues > 0,
+                    backgroundColor: '#0f172a',
+                    titleFont: { family: "'Plus Jakarta Sans', sans-serif", size: 12 },
+                    bodyFont: { family: "'Plus Jakarta Sans', sans-serif", size: 12 },
+                    padding: 10,
+                    cornerRadius: 8
+                }
             }
         }
     });
@@ -170,7 +220,7 @@ async function viewAuditLog(id) {
         const response = await fetch(`${API_BASE}/${id}`);
         const batch = await response.json();
         
-        document.getElementById('auditBatchTitle').innerText = `Batch ID: ${batch.id} - ${batch.productName}`;
+        document.getElementById('auditBatchTitle').innerText = `${batch.id} — ${batch.productName}`;
         
         const timeline = document.getElementById('auditTimeline');
         timeline.innerHTML = '';
@@ -178,14 +228,19 @@ async function viewAuditLog(id) {
         if (batch.auditLogs && batch.auditLogs.length > 0) {
             batch.auditLogs.forEach(log => {
                 timeline.innerHTML += `
-                    <div class="mb-3 position-relative">
-                        <i class="fas fa-circle text-primary position-absolute" style="left: -21px; top: 4px; background: white;"></i>
-                        <p class="mb-0 text-muted small">${log}</p>
+                    <div class="timeline-item">
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-content shadow-sm">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="fas fa-clock text-primary small"></i>
+                                <span>${log}</span>
+                            </div>
+                        </div>
                     </div>
                 `;
             });
         } else {
-            timeline.innerHTML = '<p class="text-muted">No audit logs found.</p>';
+            timeline.innerHTML = '<p class="text-muted my-3">No audit activity recorded yet for this batch.</p>';
         }
         
         const modal = new bootstrap.Modal(document.getElementById('auditLogModal'));

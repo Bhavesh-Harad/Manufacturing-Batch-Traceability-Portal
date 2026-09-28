@@ -4,162 +4,220 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manufacturing Batch Traceability Portal</title>
-    <!-- Bootstrap CSS -->
+    <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- FontAwesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        body { background-color: #f8f9fa; }
-        .dashboard-card { border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border: none; }
-        .table-container { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .navbar-brand { font-weight: bold; }
-    </style>
+    <!-- FontAwesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom Modern Styling -->
+    <link rel="stylesheet" href="/style.css">
 </head>
 <body>
 
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
-    <div class="container">
-        <a class="navbar-brand" href="#"><i class="fas fa-industry me-2"></i>Batch Traceability Portal</a>
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-custom mb-4">
+    <div class="container d-flex justify-content-between align-items-center">
+        <a class="navbar-brand" href="#">
+            <div class="brand-icon-box">
+                <i class="fas fa-cubes-stacked"></i>
+            </div>
+            <div>
+                <span>TracePort</span>
+                <span class="text-white-50 fw-normal small d-none d-sm-inline ms-1">| Batch Traceability Platform</span>
+            </div>
+        </a>
+        <div class="d-flex align-items-center gap-3">
+            <span class="live-badge">
+                <span class="live-dot"></span>
+                <span>Active System</span>
+            </span>
+        </div>
     </div>
 </nav>
 
-<div class="container">
+<div class="container pb-5">
     <!-- Dashboard Summary and Chart -->
-    <div class="row mb-4" id="dashboard-summary">
-        <div class="col-md-8">
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="card dashboard-card bg-primary text-white mb-3">
-                        <div class="card-body">
-                            <h5 class="card-title">Total Batches</h5>
-                            <h2 id="total-count">0</h2>
+    <div class="row g-3 mb-4" id="dashboard-summary">
+        <div class="col-lg-8">
+            <div class="row g-3">
+                <div class="col-sm-6">
+                    <div class="dashboard-card card-total h-100">
+                        <div class="stat-card-inner">
+                            <div>
+                                <div class="stat-label">Total Registered</div>
+                                <div class="stat-number" id="total-count">0</div>
+                            </div>
+                            <div class="stat-icon-wrapper">
+                                <i class="fas fa-boxes-stacked"></i>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-6">
-                    <div class="card dashboard-card bg-warning text-dark mb-3">
-                        <div class="card-body">
-                            <h5 class="card-title">In Production</h5>
-                            <h2 id="production-count">0</h2>
+                <div class="col-sm-6">
+                    <div class="dashboard-card card-prod h-100">
+                        <div class="stat-card-inner">
+                            <div>
+                                <div class="stat-label">In Production</div>
+                                <div class="stat-number" id="production-count">0</div>
+                            </div>
+                            <div class="stat-icon-wrapper">
+                                <i class="fas fa-gears"></i>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-6">
-                    <div class="card dashboard-card bg-info text-white mb-3">
-                        <div class="card-body">
-                            <h5 class="card-title">QA Review</h5>
-                            <h2 id="qa-count">0</h2>
+                <div class="col-sm-6">
+                    <div class="dashboard-card card-qa h-100">
+                        <div class="stat-card-inner">
+                            <div>
+                                <div class="stat-label">QA Review</div>
+                                <div class="stat-number" id="qa-count">0</div>
+                            </div>
+                            <div class="stat-icon-wrapper">
+                                <i class="fas fa-microscope"></i>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-6">
-                    <div class="card dashboard-card bg-success text-white mb-3">
-                        <div class="card-body">
-                            <h5 class="card-title">Approved</h5>
-                            <h2 id="approved-count">0</h2>
+                <div class="col-sm-6">
+                    <div class="dashboard-card card-approved h-100">
+                        <div class="stat-card-inner">
+                            <div>
+                                <div class="stat-label">Approved</div>
+                                <div class="stat-number" id="approved-count">0</div>
+                            </div>
+                            <div class="stat-icon-wrapper">
+                                <i class="fas fa-circle-check"></i>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-4 d-flex justify-content-center align-items-center">
-            <div class="card dashboard-card p-3 w-100" style="max-height: 250px;">
-                <canvas id="statusChart"></canvas>
+        <div class="col-lg-4">
+            <div class="chart-card h-100">
+                <div class="chart-header">
+                    <h6 class="chart-title"><i class="fas fa-chart-pie me-2 text-primary"></i>Status Distribution</h6>
+                </div>
+                <div style="position: relative; height: 165px;">
+                    <canvas id="statusChart"></canvas>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Actions and Search -->
-    <div class="row mb-3">
-        <div class="col-md-6">
-            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createBatchModal">
-                <i class="fas fa-plus me-1"></i> Create New Batch
-            </button>
-            <button class="btn btn-success ms-2" onclick="exportToCSV()">
-                <i class="fas fa-file-csv me-1"></i> Export Data
-            </button>
-            <input type="file" id="csvFileInput" accept=".csv" style="display: none;" onchange="handleCSVUpload(event)">
-            <button class="btn btn-secondary ms-2" onclick="document.getElementById('csvFileInput').click()">
-                <i class="fas fa-file-upload me-1"></i> Import CSV
-            </button>
-        </div>
-        <div class="col-md-6">
-            <div class="input-group">
-                <input type="text" id="searchInput" class="form-control" placeholder="Search by Product Name or Batch ID...">
-                <button class="btn btn-outline-secondary" type="button" onclick="searchBatches()"><i class="fas fa-search"></i></button>
-                <button class="btn btn-outline-secondary" type="button" onclick="loadBatches()"><i class="fas fa-sync"></i></button>
+    <!-- Actions and Search Bar -->
+    <div class="action-bar mb-4">
+        <div class="row g-2 align-items-center">
+            <div class="col-md-7 d-flex flex-wrap gap-2">
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createBatchModal">
+                    <i class="fas fa-plus"></i> Create New Batch
+                </button>
+                <button class="btn btn-success" onclick="exportToCSV()">
+                    <i class="fas fa-file-export"></i> Export Data
+                </button>
+                <input type="file" id="csvFileInput" accept=".csv" style="display: none;" onchange="handleCSVUpload(event)">
+                <button class="btn btn-secondary" onclick="document.getElementById('csvFileInput').click()">
+                    <i class="fas fa-file-arrow-up"></i> Import CSV
+                </button>
+            </div>
+            <div class="col-md-5">
+                <div class="input-group search-wrapper">
+                    <input type="text" id="searchInput" class="form-control" placeholder="Search by Product or Batch ID...">
+                    <button class="btn" type="button" onclick="searchBatches()" title="Search">
+                        <i class="fas fa-search"></i>
+                    </button>
+                    <button class="btn" type="button" onclick="loadBatches()" title="Refresh List">
+                        <i class="fas fa-rotate"></i>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Batches Table -->
     <div class="table-container">
-        <table class="table table-hover align-middle">
-            <thead class="table-light">
-                <tr>
-                    <th>Batch ID (Trace)</th>
-                    <th>Product Name</th>
-                    <th>Quantity</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody id="batches-tbody">
-                <!-- Data populated by JS -->
-            </tbody>
-        </table>
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead>
+                    <tr>
+                        <th style="width: 22%;">Batch ID (Trace)</th>
+                        <th style="width: 33%;">Product Name</th>
+                        <th style="width: 15%;">Quantity</th>
+                        <th style="width: 15%;">Status</th>
+                        <th style="width: 15%; text-align: right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="batches-tbody">
+                    <!-- Populated dynamically via app.js -->
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
 <!-- Create Batch Modal -->
 <div class="modal fade" id="createBatchModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Register New Batch</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <form id="createBatchForm">
-          <div class="mb-3">
-            <label for="productName" class="form-label">Product Name</label>
-            <input type="text" class="form-control" id="productName" required>
-          </div>
-          <div class="mb-3">
-            <label for="quantity" class="form-label">Quantity</label>
-            <input type="number" class="form-control" id="quantity" required min="1">
-          </div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-primary" onclick="createBatch()">Save Batch</button>
-      </div>
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title fw-bold text-dark">
+                    <i class="fas fa-barcode text-primary me-2"></i>Register New Batch
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createBatchForm" onsubmit="event.preventDefault(); createBatch();">
+                    <div class="mb-3">
+                        <label for="productName" class="form-label fw-semibold text-secondary small text-uppercase">Product Name</label>
+                        <input type="text" class="form-control form-control-lg fs-6" id="productName" placeholder="e.g. Ibuprofen 200mg Tablets" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="quantity" class="form-label fw-semibold text-secondary small text-uppercase">Quantity Units</label>
+                        <input type="number" class="form-control form-control-lg fs-6" id="quantity" placeholder="e.g. 5000" required min="1">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="createBatch()">Save Batch</button>
+            </div>
+        </div>
     </div>
-  </div>
 </div>
 
 <!-- Audit Log Modal -->
 <div class="modal fade" id="auditLogModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header bg-dark text-white">
-        <h5 class="modal-title"><i class="fas fa-history me-2"></i>Batch Traceability Timeline</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <h6 id="auditBatchTitle" class="fw-bold mb-4"></h6>
-        <div class="timeline ps-3 border-start border-3 border-primary" id="auditTimeline">
-            <!-- Populated by JS -->
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title fw-bold">
+                    <i class="fas fa-timeline text-primary me-2"></i>Batch Traceability Timeline
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="d-flex align-items-center justify-content-between p-3 mb-4 rounded-3 bg-light border">
+                    <div>
+                        <div class="text-secondary small text-uppercase fw-bold">Inspecting Batch</div>
+                        <h5 id="auditBatchTitle" class="fw-bold mb-0 text-dark"></h5>
+                    </div>
+                    <span class="badge bg-primary text-white">Verified Trace</span>
+                </div>
+                
+                <div class="timeline ps-3" id="auditTimeline">
+                    <!-- Populated by app.js -->
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
         </div>
-      </div>
     </div>
-  </div>
 </div>
 
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<!-- Bootstrap JS -->
+<!-- Bootstrap Bundle JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="/app.js"></script>
 </body>
