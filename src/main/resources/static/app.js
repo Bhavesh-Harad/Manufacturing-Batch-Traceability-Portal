@@ -278,60 +278,174 @@ function exportToCSV() {
         .catch(err => console.error("Export failed: ", err));
 }
 
+function parseCSVLine(text, delimiter = ',') {
+    const pattern = new RegExp(
+        (
+            // Delimiters.
+            "(\\" + delimiter + "|\\r?\\n|\\r|^)" +
+            // Quoted fields.
+            "(?:\"([^\"]*(?:\"\"[^\"]*)*)\"|" +
+            // Standard fields.
+            "([^\"\\" + delimiter + "\\r\\n]*))"
+        ),
+        "gi"
+    );
+
+    const result = [[]];
+    let matches = null;
+
+    while (matches = pattern.exec(text)) {
+        const matchedDelimiter = matches[1];
+        if (matchedDelimiter.length && matchedDelimiter !== delimiter) {
+            result.push([]);
+        }
+
+        let matchedValue;
+        if (matches[2]) {
+            matchedValue = matches[2].replace(new RegExp("\"\"", "g"), "\"");
+        } else {
+            matchedValue = matches[3];
+        }
+
+        result[result.length - 1].push(matchedValue !== undefined ? matchedValue.trim() : '');
+    }
+
+    return result.filter(row => row.length > 0 && row.some(cell => cell.length > 0));
+}
+
 function handleCSVUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
 
     const reader = new FileReader();
     reader.onload = async function(e) {
-        const text = e.target.result;
-        const lines = text.split('\n');
-        
-        const batchesToCreate = [];
-        // Support importing either the exported CSV or a simple "ProductName, Quantity" CSV
-        for (let i = 1; i < lines.length; i++) {
-            const line = lines[i].trim();
-            if (!line) continue;
-            
-            // Basic CSV split ignoring commas inside quotes
-            const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-            if (cols.length >= 2) {
-                // If it looks like an export file (4 cols), Name is col 1, Qty is col 2
-                // If it's a simple import file (2 cols), Name is col 0, Qty is col 1
-                let nameIndex = cols.length >= 4 ? 1 : 0;
-                let qtyIndex = cols.length >= 4 ? 2 : 1;
+        try {
+            let text = e.target.result;
+            if (!text) {
+                alert("The selected CSV file is empty.");
+                return;
+            }
 
-                let productName = cols[nameIndex].replace(/"/g, '').trim();
-                let quantity = parseInt(cols[qtyIndex].replace(/"/g, '').trim());
-                
-                if (productName && !isNaN(quantity)) {
-                    batchesToCreate.push({ productName: productName, quantity: quantity });
+            // Remove UTF-8 BOM if present (added by Excel)
+            text = text.replace(/^\uFEFF/, '').trim();
+
+            // Detect delimiter (comma or semicolon)
+            const firstLine = text.split(/\r\n|\n|\r/)[0];
+            const delimiter = (firstLine.includes(';') && !firstLine.includes(',')) ? ';' : ',';
+
+            const rows = parseCSVLine(text, delimiter);
+            if (!rows || rows.length === 0) {
+                alert("No readable data found in the CSV file.");
+                return;
+            }
+
+            // Inspect header row
+            const firstRow = rows[0].map(c => c.toLowerCase());
+            let nameCol = -1;
+            let qtyCol = -1;
+
+            firstRow.forEach((col, index) => {
+                if (col.includes('product') || col.includes('name') || col.includes('item') || col.includes('title')) {
+                    nameCol = index;
+                }
+                if (col.includes('qty') || col.includes('quantity') || col.includes('units') || col.includes('count')) {
+                    qtyCol = index;
+                }
+            });
+
+            let startIndex = 1;
+
+            // If header was not explicitly found, fallback to auto-detecting column types
+            if (nameCol === -1 || qtyCol === -1) {
+                // Check if row 0 has numbers
+                const isFirstRowData = rows[0].some(cell => !isNaN(parseInt(cell.replace(/,/g, ''))));
+                if (isFirstRowData) {
+                    startIndex = 0;
+                }
+
+                // If 2 columns: column with digits is qty, the other is name
+                if (rows[0].length === 2) {
+                    const col0IsNum = !isNaN(parseInt(rows[startIndex][0].replace(/,/g, '')));
+                    qtyCol = col0IsNum ? 0 : 1;
+                    nameCol = col0IsNum ? 1 : 0;
+                } else if (rows[0].length >= 4) {
+                    // Export format: Batch ID (0), Product Name (1), Quantity (2), Status (3)
+                    nameCol = 1;
+                    qtyCol = 2;
+                } else {
+                    nameCol = 0;
+                    qtyCol = 1;
                 }
             }
-        }
 
-        if (batchesToCreate.length > 0) {
+            const batchesToCreate = [];
+            for (let i = startIndex; i < rows.length; i++) {
+                const row = rows[i];
+                if (!row || row.length <= Math.max(nameCol, qtyCol)) continue;
+
+                const rawName = row[nameCol] ? row[nameCol].replace(/^["']|["']$/g, '').trim() : '';
+                const rawQty = row[qtyCol] ? row[qtyCol].replace(/,/g, '').trim() : '';
+                const quantity = parseInt(rawQty);
+
+                if (rawName && !isNaN(quantity) && quantity > 0) {
+                    batchesToCreate.push({
+                        productName: rawName,
+                        quantity: quantity
+                    });
+                }
+            }
+
+            if (batchesToCreate.length === 0) {
+                alert("No valid batch rows found. Expected columns: Product Name, Quantity (e.g. 'Aspirin, 1000')");
+                return;
+            }
+
+            // Try bulk import endpoint first
+            let importSuccess = false;
             try {
-                const response = await fetch(`${API_BASE}/bulk`, {
+                const bulkRes = await fetch(`${API_BASE}/bulk`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(batchesToCreate)
                 });
-                if (response.ok) {
-                    alert(`Successfully imported ${batchesToCreate.length} batches!`);
-                    loadBatches();
-                } else {
-                    alert("Failed to import batches.");
+                if (bulkRes.ok) {
+                    importSuccess = true;
                 }
-            } catch (error) {
-                console.error("Error bulk importing: ", error);
+            } catch (err) {
+                console.warn("Bulk endpoint unavailable, falling back to standard create...", err);
             }
-        } else {
-            alert("No valid data found in CSV. Ensure format is: Product Name, Quantity");
+
+            // Fallback: If bulk endpoint returned 404 or failed, create batches individually
+            if (!importSuccess) {
+                try {
+                    await Promise.all(batchesToCreate.map(batch => 
+                        fetch(API_BASE, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(batch)
+                        })
+                    ));
+                    importSuccess = true;
+                } catch (err) {
+                    console.error("Individual batch creation failed:", err);
+                }
+            }
+
+            if (importSuccess) {
+                alert(`Successfully imported ${batchesToCreate.length} batch(es) into the portal!`);
+                await loadBatches();
+            } else {
+                alert("Failed to import batches. Make sure the Spring Boot server is running.");
+            }
+
+        } catch (error) {
+            console.error("Error reading CSV file:", error);
+            alert("Error parsing CSV: " + error.message);
+        } finally {
+            event.target.value = '';
         }
-        // Reset file input so same file can be uploaded again if needed
-        event.target.value = '';
     };
+
     reader.readAsText(file);
 }
 
