@@ -201,21 +201,26 @@ function exportToCSV() {
         .then(batches => {
             if (batches.length === 0) return alert('No data to export!');
             
-            let csvContent = "data:text/csv;charset=utf-8,";
-            csvContent += "Batch ID,Product Name,Quantity,Status\n";
+            let csvContent = "Batch ID,Product Name,Quantity,Status\n";
             
             batches.forEach(b => {
-                csvContent += `${b.id},${b.productName},${b.quantity},${b.status}\n`;
+                // Wrap in quotes to handle commas or spaces in names safely
+                csvContent += `"${b.id}","${b.productName}",${b.quantity},"${b.status}"\n`;
             });
             
-            const encodedUri = encodeURI(csvContent);
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            
             const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
+            link.setAttribute("href", url);
             link.setAttribute("download", "batch_export.csv");
+            link.style.display = "none";
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-        });
+            URL.revokeObjectURL(url);
+        })
+        .catch(err => console.error("Export failed: ", err));
 }
 
 function getStatusBadge(status) {
