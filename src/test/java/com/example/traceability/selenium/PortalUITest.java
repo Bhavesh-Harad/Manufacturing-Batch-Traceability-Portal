@@ -110,18 +110,30 @@ public class PortalUITest {
 
     @Test
     @Order(3)
-    public void testUpdateBatchStatus() {
-        // Ensure there is at least one batch (created in test 1)
+    public void testUpdateBatchStatus() throws InterruptedException {
+        // Reload page to clear any previous search filters
+        driver.get(BASE_URL);
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("dashboard-summary")));
+
+        // Ensure there is at least one batch
         WebElement dropdownBtn = wait.until(ExpectedConditions.elementToBeClickable(
                 By.xpath("//tbody[@id='batches-tbody']/tr[1]//button[contains(@class,'dropdown-toggle')]")
         ));
+        
+        // Scroll to the button just in case
+        ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", dropdownBtn);
+        Thread.sleep(500); 
         dropdownBtn.click();
+
+        // Wait for Bootstrap dropdown animation to complete
+        Thread.sleep(1000);
 
         // Click 'In Production'
         WebElement inProdOption = wait.until(ExpectedConditions.elementToBeClickable(
-                By.xpath("//tbody[@id='batches-tbody']/tr[1]//ul[@class='dropdown-menu']//a[contains(text(),'In Production')]")
+                By.xpath("//tbody[@id='batches-tbody']/tr[1]//ul[contains(@class,'dropdown-menu')]//a[contains(text(),'In Production')]")
         ));
-        inProdOption.click();
+        // Use Javascript executor to click in case the animation overlays it
+        ((JavascriptExecutor) driver).executeScript("arguments[0].click();", inProdOption);
 
         // Wait for UI to update (status badge text should change)
         wait.until(ExpectedConditions.textToBePresentInElementLocated(
