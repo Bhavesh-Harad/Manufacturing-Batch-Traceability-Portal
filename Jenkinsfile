@@ -26,18 +26,33 @@ pipeline {
         stage('Build & Package') {
             steps {
                 echo "Building application for ${params.DEPLOY_ENV} environment..."
-                sh 'mvn clean package -DskipTests'
+                // Build without running tests to package it first, or just compile
+                sh 'mvn clean compile'
+            }
+        }
+
+        stage('Test (Selenium)') {
+            steps {
+                echo 'Running Selenium UI Test Suite...'
+                // Run Maven test phase
+                sh 'mvn test'
+            }
+            post {
+                always {
+                    // Publish test reports to Jenkins UI
+                    junit 'target/surefire-reports/*.xml'
+                    // Archive screenshots if any failures occurred
+                    archiveArtifacts artifacts: 'target/screenshots/*.png', allowEmptyArchive: true
+                }
             }
         }
 
         stage('Deploy') {
             steps {
-                echo "Deploying to Tomcat on port ${params.TOMCAT_PORT}..."
-                // Assuming Tomcat is running locally for demonstration purposes
-                // Real deployment might use Ansible or SSH via Publish Over SSH plugin
+                // This stage will NOT run if the 'Test' stage fails
+                echo "Tests passed! Deploying to Tomcat on port ${params.TOMCAT_PORT}..."
+                sh 'mvn package -DskipTests'
                 sh "cp target/${APP_NAME}-*.jar /opt/tomcat/webapps/${APP_NAME}.jar"
-                
-                // Example showing parameter usage in deployment script
                 echo "Deployment to ${params.DEPLOY_ENV} completed successfully."
             }
         }
@@ -45,14 +60,14 @@ pipeline {
 
     post {
         always {
-            archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+            archiveArtifacts artifacts: 'target/*.jar', fingerprint: true, allowEmptyArchive: true
             echo 'Archived build artifacts.'
         }
         success {
             echo 'Pipeline executed successfully.'
         }
         failure {
-            echo 'Pipeline failed. Please check logs.'
+            echo 'Pipeline failed due to test errors. Deployment stopped.'
         }
     }
 }

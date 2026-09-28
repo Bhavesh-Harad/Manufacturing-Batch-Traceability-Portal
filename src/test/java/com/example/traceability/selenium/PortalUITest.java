@@ -22,8 +22,11 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+import org.springframework.boot.test.context.SpringBootTest;
+
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class PortalUITest {
 
@@ -130,14 +133,6 @@ public class PortalUITest {
         assertTrue(badge.getText().contains("IN_PRODUCTION"), "Status badge should have updated to IN_PRODUCTION.");
     }
     
-    @Test
-    @Order(4)
-    public void testIntentionalFailureForScreenshot() {
-        // This test will fail after 10s timeout, triggering the TestWatcher to take a screenshot
-        WebElement nonExistentBtn = wait.until(ExpectedConditions.elementToBeClickable(By.id("fake-button-id")));
-        nonExistentBtn.click();
-    }
-
     // Screenshot mechanism on failure
     @RegisterExtension
     TestWatcher screenshotWatcher = new TestWatcher() {
