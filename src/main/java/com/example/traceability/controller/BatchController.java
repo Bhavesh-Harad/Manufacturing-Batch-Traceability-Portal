@@ -28,6 +28,17 @@ public class BatchController {
         return batch;
     }
 
+    @PostMapping("/bulk")
+    public List<Batch> createBatchesBulk(@RequestBody List<Batch> newBatches) {
+        for (Batch batch : newBatches) {
+            batch.setId(UUID.randomUUID().toString().substring(0, 8).toUpperCase());
+            batch.setStatus("CREATED");
+            batch.addAuditLog(getCurrentTime() + " - System: Batch bulk imported from CSV.");
+            batches.add(batch);
+        }
+        return batches;
+    }
+
     @GetMapping
     public List<Batch> getAllBatches() {
         return batches;

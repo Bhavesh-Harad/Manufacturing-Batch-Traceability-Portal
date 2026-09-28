@@ -223,6 +223,63 @@ function exportToCSV() {
         .catch(err => console.error("Export failed: ", err));
 }
 
+function handleCSVUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+        const text = e.target.result;
+        const lines = text.split('\n');
+        
+        const batchesToCreate = [];
+        // Support importing either the exported CSV or a simple "ProductName, Quantity" CSV
+        for (let i = 1; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (!line) continue;
+            
+            // Basic CSV split ignoring commas inside quotes
+            const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+            if (cols.length >= 2) {
+                // If it looks like an export file (4 cols), Name is col 1, Qty is col 2
+                // If it's a simple import file (2 cols), Name is col 0, Qty is col 1
+                let nameIndex = cols.length >= 4 ? 1 : 0;
+                let qtyIndex = cols.length >= 4 ? 2 : 1;
+
+                let productName = cols[nameIndex].replace(/"/g, '').trim();
+                let quantity = parseInt(cols[qtyIndex].replace(/"/g, '').trim());
+                
+                if (productName && !isNaN(quantity)) {
+                    batchesToCreate.push({ productName: productName, quantity: quantity });
+                }
+            }
+        }
+
+        if (batchesToCreate.length > 0) {
+            try {
+                const response = await fetch(`${API_BASE}/bulk`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(batchesToCreate)
+                });
+                if (response.ok) {
+                    alert(`Successfully imported ${batchesToCreate.length} batches!`);
+                    loadBatches();
+                } else {
+                    alert("Failed to import batches.");
+                }
+            } catch (error) {
+                console.error("Error bulk importing: ", error);
+            }
+        } else {
+            alert("No valid data found in CSV. Ensure format is: Product Name, Quantity");
+        }
+        // Reset file input so same file can be uploaded again if needed
+        event.target.value = '';
+    };
+    reader.readAsText(file);
+}
+
 function getStatusBadge(status) {
     switch (status) {
         case 'CREATED': return 'bg-secondary';

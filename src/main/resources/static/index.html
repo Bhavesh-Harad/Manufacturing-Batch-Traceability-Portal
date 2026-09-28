@@ -78,6 +78,10 @@
             <button class="btn btn-success ms-2" onclick="exportToCSV()">
                 <i class="fas fa-file-csv me-1"></i> Export Data
             </button>
+            <input type="file" id="csvFileInput" accept=".csv" style="display: none;" onchange="handleCSVUpload(event)">
+            <button class="btn btn-secondary ms-2" onclick="document.getElementById('csvFileInput').click()">
+                <i class="fas fa-file-upload me-1"></i> Import CSV
+            </button>
         </div>
         <div class="col-md-6">
             <div class="input-group">
