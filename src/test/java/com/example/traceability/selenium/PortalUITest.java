@@ -36,10 +36,23 @@ public class PortalUITest {
 
     @BeforeAll
     public static void setupClass() {
-        WebDriverManager.chromedriver().setup();
+        File cachedDriver = new File("C:\\Users\\Acer\\.cache\\selenium\\chromedriver\\win64\\140.0.7339.207\\chromedriver.exe");
+        if (cachedDriver.exists()) {
+            System.setProperty("webdriver.chrome.driver", cachedDriver.getAbsolutePath());
+        } else {
+            try {
+                WebDriverManager.chromedriver().browserVersion("140").setup();
+            } catch (Exception e) {
+                WebDriverManager.chromedriver().setup();
+            }
+        }
+
         ChromeOptions options = new ChromeOptions();
-        options.addArguments("--headless"); // Run headless for CI/CD compatibility
+        options.addArguments("--headless");
+        options.addArguments("--no-sandbox");
+        options.addArguments("--disable-dev-shm-usage");
         options.addArguments("--disable-gpu");
+        options.addArguments("--remote-allow-origins=*");
         options.addArguments("--window-size=1920,1080");
         driver = new ChromeDriver(options);
         wait = new WebDriverWait(driver, Duration.ofSeconds(10));
