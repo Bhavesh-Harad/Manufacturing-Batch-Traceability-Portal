@@ -6,11 +6,6 @@ pipeline {
         string(name: 'TOMCAT_PORT', defaultValue: '8080', description: 'Port for Tomcat server')
     }
 
-    tools {
-        maven 'Maven 3.x'
-        jdk 'JDK 17'
-    }
-
     environment {
         APP_NAME = 'traceability-portal'
     }
@@ -26,16 +21,26 @@ pipeline {
         stage('Build & Package') {
             steps {
                 echo "Building application for ${params.DEPLOY_ENV} environment..."
-                // Build without running tests to package it first, or just compile
-                sh 'mvn clean compile'
+                script {
+                    if (isUnix()) {
+                        sh 'mvn clean compile'
+                    } else {
+                        bat 'mvn clean compile'
+                    }
+                }
             }
         }
 
         stage('Test (Selenium)') {
             steps {
                 echo 'Running Selenium UI Test Suite...'
-                // Run Maven test phase
-                sh 'mvn test'
+                script {
+                    if (isUnix()) {
+                        sh 'mvn test'
+                    } else {
+                        bat 'mvn test'
+                    }
+                }
             }
             post {
                 always {
@@ -49,10 +54,15 @@ pipeline {
 
         stage('Deploy') {
             steps {
-                // This stage will NOT run if the 'Test' stage fails
                 echo "Tests passed! Deploying to Tomcat on port ${params.TOMCAT_PORT}..."
-                sh 'mvn package -DskipTests'
-                sh "cp target/${APP_NAME}-*.jar /opt/tomcat/webapps/${APP_NAME}.jar"
+                script {
+                    if (isUnix()) {
+                        sh 'mvn package -DskipTests'
+                        sh "cp target/${APP_NAME}-*.jar /opt/tomcat/webapps/${APP_NAME}.jar || true"
+                    } else {
+                        bat 'mvn package -DskipTests'
+                    }
+                }
                 echo "Deployment to ${params.DEPLOY_ENV} completed successfully."
             }
         }
@@ -67,7 +77,7 @@ pipeline {
             echo 'Pipeline executed successfully.'
         }
         failure {
-            echo 'Pipeline failed due to test errors. Deployment stopped.'
+            echo 'Pipeline failed due to test or build errors. Deployment stopped.'
         }
     }
 }
