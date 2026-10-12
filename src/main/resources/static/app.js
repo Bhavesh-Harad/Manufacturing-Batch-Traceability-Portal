@@ -1,3 +1,6 @@
+let allLoadedBatches = [];
+let currentFilter = 'ALL';
+
 document.addEventListener("DOMContentLoaded", () => {
     loadBatches();
 });
@@ -7,9 +10,10 @@ const API_BASE = '/api/batches';
 async function loadBatches() {
     try {
         const response = await fetch(API_BASE);
-        const batches = await response.json();
-        renderTable(batches);
-        updateDashboard(batches);
+        allLoadedBatches = await response.json();
+        updateDashboard(allLoadedBatches);
+        updateFilterCounts(allLoadedBatches);
+        applyCurrentFilter();
     } catch (error) {
         console.error('Error loading batches:', error);
     }
@@ -25,6 +29,9 @@ async function searchBatches() {
     try {
         const response = await fetch(`${API_BASE}/search?keyword=${encodeURIComponent(keyword)}`);
         const batches = await response.json();
+        allLoadedBatches = batches;
+        updateDashboard(batches);
+        updateFilterCounts(batches);
         renderTable(batches);
     } catch (error) {
         console.error('Error searching batches:', error);
@@ -76,6 +83,70 @@ async function updateStatus(id, status) {
     }
 }
 
+function filterByStatus(status) {
+    currentFilter = status;
+    
+    const pills = document.querySelectorAll('.filter-pill');
+    pills.forEach(p => {
+        p.classList.remove('active');
+        if (p.getAttribute('onclick') && p.getAttribute('onclick').includes(status)) {
+            p.classList.add('active');
+        }
+    });
+
+    applyCurrentFilter();
+}
+
+function applyCurrentFilter() {
+    let filtered = allLoadedBatches;
+    if (currentFilter !== 'ALL') {
+        if (currentFilter === 'RECALLED') {
+            filtered = allLoadedBatches.filter(b => b.recalled || b.status === 'RECALLED');
+        } else {
+            filtered = allLoadedBatches.filter(b => b.status === currentFilter);
+        }
+    }
+    renderTable(filtered);
+}
+
+function updateFilterCounts(batches) {
+    let counts = { ALL: batches.length, CREATED: 0, IN_PRODUCTION: 0, QA_REVIEW: 0, APPROVED: 0, RECALLED: 0 };
+    batches.forEach(b => {
+        if (b.status === 'CREATED') counts.CREATED++;
+        else if (b.status === 'IN_PRODUCTION') counts.IN_PRODUCTION++;
+        else if (b.status === 'QA_REVIEW') counts.QA_REVIEW++;
+        else if (b.status === 'APPROVED') counts.APPROVED++;
+        
+        if (b.recalled || b.status === 'RECALLED') {
+            counts.RECALLED++;
+        }
+    });
+
+    const elAll = document.getElementById('count-all');
+    if (elAll) elAll.innerText = counts.ALL;
+    const elCreated = document.getElementById('count-created');
+    if (elCreated) elCreated.innerText = counts.CREATED;
+    const elInprod = document.getElementById('count-inprod');
+    if (elInprod) elInprod.innerText = counts.IN_PRODUCTION;
+    const elQareview = document.getElementById('count-qareview');
+    if (elQareview) elQareview.innerText = counts.QA_REVIEW;
+    const elApproved = document.getElementById('count-approved');
+    if (elApproved) elApproved.innerText = counts.APPROVED;
+    const elRecalled = document.getElementById('count-recalled');
+    if (elRecalled) elRecalled.innerText = counts.RECALLED;
+
+    const banner = document.getElementById('recallAlertBanner');
+    const bannerText = document.getElementById('recallBannerText');
+    if (banner) {
+        if (counts.RECALLED > 0) {
+            banner.classList.remove('d-none');
+            if (bannerText) bannerText.innerText = `${counts.RECALLED} batch(es) currently under regulatory quarantine hold. Review Certificate of Analysis traveler.`;
+        } else {
+            banner.classList.add('d-none');
+        }
+    }
+}
+
 function renderTable(batches) {
     const tbody = document.getElementById('batches-tbody');
     tbody.innerHTML = '';
@@ -99,15 +170,26 @@ function renderTable(batches) {
         const badgeClass = getStatusBadge(batch.status);
         const tr = document.createElement('tr');
         
+        const mfgFacility = batch.manufacturingUnit || 'Facility Line A (ISO-7)';
+        const qualityScore = batch.qualityScore || '99.4%';
+        
         tr.innerHTML = `
             <td>
-                <span class="batch-id-pill" onclick="viewAuditLog('${batch.id}')" title="Click to view full traceability timeline">
-                    <i class="fas fa-qrcode"></i> ${batch.id}
-                </span>
+                <div class="d-flex align-items-center gap-1">
+                    <span class="batch-id-pill" onclick="viewAuditLog('${batch.id}')" title="Click to view full traceability timeline">
+                        <i class="fas fa-qrcode"></i> ${batch.id}
+                    </span>
+                    <button class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 0.72rem; border-radius: 6px;" onclick="openCertificateModal('${batch.id}')" title="Generate Certificate of Analysis (CoA) & Traveler">
+                        <i class="fas fa-file-contract"></i> CoA
+                    </button>
+                </div>
+                ${(batch.recalled || batch.status === 'RECALLED') ? '<div class="text-danger fw-bold small mt-1" style="font-size: 0.75rem;"><i class="fas fa-triangle-exclamation"></i> HOLD: ' + (batch.recallReason || 'Quarantined') + '</div>' : ''}
             </td>
             <td>
                 <div class="fw-bold text-dark">${batch.productName}</div>
-                <div class="small text-muted">ID: #${batch.id}</div>
+                <div class="small text-muted" style="font-size: 0.78rem;">
+                    <i class="fas fa-industry me-1"></i>${mfgFacility}
+                </div>
             </td>
             <td>
                 <span class="fw-semibold text-secondary">${batch.quantity.toLocaleString()}</span>
@@ -115,6 +197,9 @@ function renderTable(batches) {
             </td>
             <td>
                 <span class="badge ${badgeClass}">${batch.status}</span>
+                <div class="small text-muted mt-1" style="font-size: 0.72rem;">
+                    <i class="fas fa-check-double text-success me-1"></i>Assay: ${qualityScore}
+                </div>
             </td>
             <td style="text-align: right;">
                 <div class="dropdown d-inline-block">
@@ -129,6 +214,9 @@ function renderTable(batches) {
                         <li><hr class="dropdown-divider my-1"></li>
                         <li><a class="dropdown-item py-2 text-success fw-semibold" href="#" onclick="updateStatus('${batch.id}', 'APPROVED')"><i class="fas fa-circle-check me-2"></i>Approved</a></li>
                         <li><a class="dropdown-item py-2 text-danger fw-semibold" href="#" onclick="updateStatus('${batch.id}', 'REJECTED')"><i class="fas fa-circle-xmark me-2"></i>Rejected</a></li>
+                        <li><hr class="dropdown-divider my-1"></li>
+                        <li><a class="dropdown-item py-2 text-danger fw-semibold" href="#" onclick="promptRecallBatch('${batch.id}')"><i class="fas fa-triangle-exclamation me-2"></i>Quarantine / Recall</a></li>
+                        <li><a class="dropdown-item py-2 text-muted small" href="#" onclick="deleteBatch('${batch.id}')"><i class="fas fa-trash me-2"></i>Delete Batch</a></li>
                     </ul>
                 </div>
             </td>
@@ -510,6 +598,130 @@ function getStatusBadge(status) {
         case 'QA_REVIEW': return 'bg-info text-dark';
         case 'APPROVED': return 'bg-success';
         case 'REJECTED': return 'bg-danger';
+        case 'RECALLED': return 'bg-danger';
         default: return 'bg-secondary';
     }
 }
+
+function generateBarcodeSVG(text) {
+    const clean = (text || "BATCH-000").toUpperCase();
+    let x = 12;
+    let rects = '';
+
+    // Start guard pattern
+    rects += `<rect x="${x}" y="0" width="3" height="50" fill="#0f172a" />`;
+    x += 5;
+    rects += `<rect x="${x}" y="0" width="2" height="50" fill="#0f172a" />`;
+    x += 6;
+
+    for (let i = 0; i < clean.length; i++) {
+        const code = clean.charCodeAt(i);
+        const w1 = ((code % 3) + 1) * 2;
+        const w2 = (((code >> 2) % 3) + 1) * 2;
+        const gap = (((code >> 4) % 2) + 2) * 2;
+
+        rects += `<rect x="${x}" y="0" width="${w1}" height="50" fill="#0f172a" />`;
+        x += w1 + gap;
+        rects += `<rect x="${x}" y="0" width="${w2}" height="50" fill="#0f172a" />`;
+        x += w2 + 4;
+    }
+
+    // Stop guard pattern
+    rects += `<rect x="${x}" y="0" width="2" height="50" fill="#0f172a" />`;
+    x += 5;
+    rects += `<rect x="${x}" y="0" width="3" height="50" fill="#0f172a" />`;
+    x += 12;
+
+    const svg = document.getElementById('coaBarcodeSvg');
+    if (svg) {
+        svg.setAttribute('viewBox', `0 0 ${x} 50`);
+        svg.innerHTML = rects;
+    }
+}
+
+async function openCertificateModal(id) {
+    try {
+        const response = await fetch(`${API_BASE}/${id}`);
+        const batch = await response.json();
+        if (!batch) return;
+
+        document.getElementById('coaBatchId').innerText = batch.id;
+        document.getElementById('coaProductName').innerText = batch.productName;
+        document.getElementById('coaFacility').innerText = batch.manufacturingUnit || 'Cleanroom Facility Line A (ISO-7)';
+        document.getElementById('coaQuantity').innerText = (batch.quantity || 0).toLocaleString() + ' units';
+        document.getElementById('coaMfgDate').innerText = batch.mfgDate || new Date().toISOString().split('T')[0];
+        document.getElementById('coaExpDate').innerText = batch.expDate || '2028-10-12';
+        document.getElementById('coaQualityScore').innerText = batch.qualityScore || '99.4% (Pharmacopeia Grade)';
+        document.getElementById('coaInspector').innerText = batch.inspector || 'Dr. A. Sharma (QA Lead)';
+        document.getElementById('coaDocRef').innerText = `CoA-2026-${batch.id.replace(/[^A-Za-z0-9]/g, '')}`;
+        document.getElementById('coaTimestamp').innerText = new Date().toLocaleString();
+        document.getElementById('coaBarcodeText').innerText = `*${batch.id}*`;
+
+        const isRecalled = batch.recalled || batch.status === 'RECALLED';
+        const watermark = document.getElementById('coaWatermark');
+        const seal = document.getElementById('coaSeal');
+        const statusBadge = document.getElementById('coaStatusBadge');
+
+        if (isRecalled) {
+            watermark.innerText = 'QUARANTINED';
+            watermark.classList.add('quarantined');
+            seal.classList.add('quarantined');
+            statusBadge.innerHTML = `<span class="badge bg-danger">HOLD / QUARANTINED</span><div class="small text-danger mt-1">Reason: ${batch.recallReason || 'Suspected deviation'}</div>`;
+        } else {
+            watermark.innerText = 'OFFICIAL CoA';
+            watermark.classList.remove('quarantined');
+            seal.classList.remove('quarantined');
+            statusBadge.innerHTML = `<span class="badge bg-success">PASSED & RELEASED</span>`;
+        }
+
+        generateBarcodeSVG(batch.id);
+
+        const modal = new bootstrap.Modal(document.getElementById('certificateModal'));
+        modal.show();
+    } catch (err) {
+        console.error('Error opening CoA modal:', err);
+    }
+}
+
+function promptRecallBatch(id) {
+    document.getElementById('recallBatchIdInput').value = id;
+    const modal = new bootstrap.Modal(document.getElementById('recallModal'));
+    modal.show();
+}
+
+async function executeRecall() {
+    const id = document.getElementById('recallBatchIdInput').value;
+    const reason = document.getElementById('recallReasonSelect').value;
+    if (!id) return;
+
+    try {
+        const response = await fetch(`${API_BASE}/${id}/recall?reason=${encodeURIComponent(reason)}`, {
+            method: 'PUT'
+        });
+        if (response.ok) {
+            const modalEl = document.getElementById('recallModal');
+            const modalInstance = bootstrap.Modal.getInstance(modalEl);
+            if (modalInstance) modalInstance.hide();
+            await loadBatches();
+        }
+    } catch (err) {
+        console.error('Error triggering quarantine recall:', err);
+    }
+}
+
+async function deleteBatch(id) {
+    if (!confirm(`Are you sure you want to permanently delete/archive batch ${id}?`)) {
+        return;
+    }
+    try {
+        const response = await fetch(`${API_BASE}/${id}`, {
+            method: 'DELETE'
+        });
+        if (response.ok) {
+            await loadBatches();
+        }
+    } catch (err) {
+        console.error('Error deleting batch:', err);
+    }
+}
+

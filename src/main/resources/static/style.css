@@ -475,3 +475,178 @@ body {
     font-size: 0.85rem;
     color: #334155;
 }
+
+/* Status Filter Pills */
+.filter-pills-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+}
+
+.filter-pill {
+    border: 1px solid var(--border-color);
+    background: #ffffff;
+    color: var(--text-secondary);
+    padding: 0.4rem 0.9rem;
+    border-radius: 9999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.filter-pill:hover {
+    background-color: #f1f5f9;
+    color: var(--text-primary);
+    border-color: #cbd5e1;
+}
+
+.filter-pill.active {
+    background-color: #0f172a;
+    color: #ffffff;
+    border-color: #0f172a;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.2);
+}
+
+.filter-pill.filter-recalled.active {
+    background-color: #dc2626;
+    border-color: #dc2626;
+    color: #ffffff;
+}
+
+.filter-pill .pill-count {
+    background: rgba(0, 0, 0, 0.08);
+    padding: 0.1rem 0.45rem;
+    border-radius: 9999px;
+    font-size: 0.7rem;
+}
+
+.filter-pill.active .pill-count {
+    background: rgba(255, 255, 255, 0.25);
+    color: #ffffff;
+}
+
+/* Emergency Recall Alert Banner */
+.recall-alert-banner {
+    background: linear-gradient(90deg, #fef2f2 0%, #fee2e2 100%);
+    border: 1px solid #fecaca;
+    border-left: 5px solid #ef4444;
+    border-radius: 12px;
+    padding: 0.9rem 1.25rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.08);
+}
+
+/* Certificate of Analysis (CoA) Styling */
+.coa-sheet {
+    background: #ffffff;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 2rem;
+    position: relative;
+    font-family: var(--font-sans);
+}
+
+.coa-header {
+    border-bottom: 2px solid #0f172a;
+    padding-bottom: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.coa-watermark {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-30deg);
+    font-size: 4.5rem;
+    font-weight: 900;
+    color: rgba(16, 185, 129, 0.06);
+    pointer-events: none;
+    text-transform: uppercase;
+    white-space: nowrap;
+    z-index: 1;
+}
+
+.coa-watermark.quarantined {
+    color: rgba(239, 68, 68, 0.08);
+}
+
+.coa-table th {
+    background-color: #f8fafc;
+    color: #475569;
+    font-weight: 600;
+    font-size: 0.8rem;
+    width: 35%;
+}
+
+.coa-table td {
+    font-size: 0.85rem;
+    color: #0f172a;
+}
+
+.barcode-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0.85rem;
+    background: #ffffff;
+    border: 1px dashed #cbd5e1;
+    border-radius: 8px;
+    margin: 1rem 0;
+}
+
+.barcode-svg {
+    max-width: 100%;
+    height: 52px;
+}
+
+.barcode-label {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: #1e293b;
+    margin-top: 4px;
+}
+
+.digital-signature-seal {
+    border: 2px solid #10b981;
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    background: #f0fdf4;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.digital-signature-seal.quarantined {
+    border-color: #ef4444;
+    background: #fef2f2;
+}
+
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    #certificateModal, #certificateModal * {
+        visibility: visible;
+    }
+    #certificateModal {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+    }
+    .modal-footer, .btn-close {
+        display: none !important;
+    }
+}
+
