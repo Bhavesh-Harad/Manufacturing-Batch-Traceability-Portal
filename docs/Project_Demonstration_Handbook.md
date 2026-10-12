@@ -183,3 +183,64 @@ All detailed specifications are in your project's [`docs/`](file:///d:/DevOps_Pr
 * 📄 [`docs/Configuration_Management_Ansible.md`](file:///d:/DevOps_Project/TraceabilityPortal/docs/Configuration_Management_Ansible.md) *(Server Prerequisites & Playbooks)*
 * 📄 [`docs/Automated_Provisioning_Reliability.md`](file:///d:/DevOps_Project/TraceabilityPortal/docs/Automated_Provisioning_Reliability.md) *(Idempotency Proof & Rollback Logs)*
 * 📄 [`docs/Week9_Selenium_Test_Plan.md`](file:///d:/DevOps_Project/TraceabilityPortal/docs/Week9_Selenium_Test_Plan.md) *(Selenium Test Plan & Cases)*
+
+---
+
+## 🧪 7. Ready-to-Use Sample Testing Inputs & Demo Data
+
+Use these realistic test datasets during your demo, viva, or manual testing:
+
+### 🔹 Scenario A: Form Inputs for "Register New Batch" Modal
+
+| Test Case | Product Name (Input 1) | Quantity (Input 2) | Expected Status | Workflow Progression to Demo |
+|---|---|---|---|---|
+| **Batch 1 (Pharma)** | `Paracetamol 500mg Tablets` | `10000` | `CREATED` | Move: `CREATED` $\rightarrow$ `IN_PRODUCTION` $\rightarrow$ `QA_REVIEW` $\rightarrow$ `APPROVED` |
+| **Batch 2 (Medical)** | `Amoxicillin 250mg Capsules` | `5000` | `CREATED` | Move: `CREATED` $\rightarrow$ `IN_PRODUCTION` $\rightarrow$ `QA_REVIEW` |
+| **Batch 3 (Aerospace)** | `Precision Titanium Bolts M8` | `2500` | `CREATED` | Move: `CREATED` $\rightarrow$ `IN_PRODUCTION` |
+| **Batch 4 (Quality Failure)**| `Insulin Glargine 100 IU/ml` | `1200` | `CREATED` | Move: `CREATED` $\rightarrow$ `QA_REVIEW` $\rightarrow$ `REJECTED` *(Demonstrates QC failure handling)* |
+
+---
+
+### 🔹 Scenario B: Sample Keywords for Search Bar Testing
+Type each into the search bar (`searchInput`) and click **Search**:
+* `Paracetamol` $\rightarrow$ Filters to show only the Paracetamol batch.
+* `Titanium` $\rightarrow$ Filters to show aerospace component batches.
+* `5000` $\rightarrow$ Demonstrates searching by quantity value.
+* Clear the input and click **Search** $\rightarrow$ Restores the complete table view.
+
+---
+
+### 🔹 Scenario C: Copy-Paste Data for "Import CSV" Modal
+Click **"Import CSV"** on the dashboard, paste this block into the text box, and click **Import**:
+
+```csv
+Product Name,Quantity
+Paracetamol 500mg Film-Coated,12000
+Amoxicillin Clavulanate 625mg,8500
+Ibuprofen 400mg Softgel,15000
+Precision Alloy Fasteners Grade-5,3200
+Atorvastatin Calcium 20mg,6000
+```
+* **Visual Effect:** The total batch count jumps by 5 immediately, and the Chart.js Donut chart updates dynamically!
+
+---
+
+### 🔹 Scenario D: REST API Test Payloads (cURL / Postman)
+
+#### 1. Create a Batch via API:
+```bash
+curl -X POST http://localhost:8080/api/batches \
+  -H "Content-Type: application/json" \
+  -d '{"productName": "Ciprofloxacin 500mg Tablets", "quantity": 7500}'
+```
+
+#### 2. Retrieve All Batches:
+```bash
+curl http://localhost:8080/api/batches
+```
+
+#### 3. Update Status to Approved via API:
+```bash
+curl -X PUT "http://localhost:8080/api/batches/<BATCH_ID>/status?status=APPROVED"
+```
+
