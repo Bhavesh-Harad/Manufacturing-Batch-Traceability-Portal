@@ -1,0 +1,62 @@
+---
+# ==============================================================================
+# Ansible Automated Deployment & Health Check Playbook
+# ==============================================================================
+- name: Deploy Batch Traceability Portal Container & Validate Health
+  hosts: all
+  become: yes
+  vars:
+    app_name: "traceability-portal"
+    app_image: "docker.io/bharad/traceability-portal"
+    app_version: "v1.2.14"
+    app_port: 8080
+    container_name: "traceability-portal-container"
+
+  tasks:
+    - name: Pull target application Docker image
+      command: "docker pull {{ app_image }}:{{ app_version }}"
+      register: pull_res
+      changed_when: "'Downloaded newer image' in pull_res.stdout or 'Pull complete' in pull_res.stdout"
+      ignore_errors: yes
+
+    - name: Stop and remove existing application container if present
+      command: "docker rm -f {{ container_name }}"
+      register: rm_res
+      changed_when: rm_res.rc == 0
+      ignore_errors: yes
+
+    - name: Run fresh application container
+      command: >
+        docker run -d
+        --name {{ container_name }}
+        -p {{ app_port }}:8080
+        --restart unless-stopped
+        {{ app_image }}:{{ app_version }}
+      register: run_res
+      changed_when: run_res.rc == 0
+
+    - name: Wait for application to initialize and open port
+      wait_for:
+        port: "{{ app_port }}"
+        delay: 5
+        timeout: 60
+      ignore_errors: yes
+
+    - name: Perform automated HTTP health check
+      uri:
+        url: "http://localhost:{{ app_port }}/api/batches"
+        method: GET
+        status_code: 200
+        return_content: yes
+      register: health_check
+      retries: 5
+      delay: 3
+      until: health_check.status == 200
+      ignore_errors: yes
+
+    - name: Assert health check verification succeeded
+      assert:
+        that:
+          - health_check.status == 200
+        fail_msg: "Health check failed on endpoint /api/batches! Triggering rollback recommended."
+        success_msg: "HEALTH CHECK PASSED: Batch Traceability Portal is responding with HTTP 200 OK!"
