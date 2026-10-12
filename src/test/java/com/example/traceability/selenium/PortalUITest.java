@@ -23,16 +23,23 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.server.LocalServerPort;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class PortalUITest {
 
+    @LocalServerPort
+    private int port;
+
     private static WebDriver driver;
     private static WebDriverWait wait;
-    private static final String BASE_URL = "http://localhost:8080";
+
+    private String getBaseUrl() {
+        return "http://localhost:" + port;
+    }
 
     @BeforeAll
     public static void setupClass() {
@@ -67,7 +74,7 @@ public class PortalUITest {
 
     @BeforeEach
     public void setupTest() {
-        driver.get(BASE_URL);
+        driver.get(getBaseUrl());
         // Wait until dashboard loads
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("dashboard-summary")));
     }
@@ -125,7 +132,7 @@ public class PortalUITest {
     @Order(3)
     public void testUpdateBatchStatus() throws InterruptedException {
         // Reload page to clear any previous search filters
-        driver.get(BASE_URL);
+        driver.get(getBaseUrl());
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("dashboard-summary")));
 
         // Ensure there is at least one batch
