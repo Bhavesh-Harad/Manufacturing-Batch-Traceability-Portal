@@ -105,8 +105,22 @@
         </div>
     </div>
 
+    <!-- Emergency Recall Alert Banner -->
+    <div id="recallAlertBanner" class="recall-alert-banner d-none">
+        <div class="d-flex align-items-center gap-3">
+            <i class="fas fa-triangle-exclamation fa-2x text-danger"></i>
+            <div>
+                <div class="fw-bold text-danger">REGULATORY QUALITY QUARANTINE ACTIVE</div>
+                <div class="small text-secondary" id="recallBannerText">One or more batches are quarantined due to QA inspection holds or cold-chain deviations.</div>
+            </div>
+        </div>
+        <button class="btn btn-sm btn-outline-danger" onclick="filterByStatus('RECALLED')">
+            <i class="fas fa-filter me-1"></i>View Quarantined
+        </button>
+    </div>
+
     <!-- Actions and Search Bar -->
-    <div class="action-bar mb-4">
+    <div class="action-bar mb-3">
         <div class="row g-2 align-items-center">
             <div class="col-md-7 d-flex flex-wrap gap-2">
                 <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createBatchModal">
@@ -121,7 +135,7 @@
             </div>
             <div class="col-md-5">
                 <div class="input-group search-wrapper">
-                    <input type="text" id="searchInput" class="form-control" placeholder="Search by Product or Batch ID...">
+                    <input type="text" id="searchInput" class="form-control" placeholder="Search by Product, Batch ID, or Unit...">
                     <button class="btn" type="button" onclick="searchBatches()" title="Search">
                         <i class="fas fa-search"></i>
                     </button>
@@ -131,6 +145,16 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- Status Filter Pills -->
+    <div class="filter-pills-bar" id="statusFilterBar">
+        <button class="filter-pill active" onclick="filterByStatus('ALL')">All Batches <span class="pill-count" id="count-all">0</span></button>
+        <button class="filter-pill" onclick="filterByStatus('CREATED')">Created <span class="pill-count" id="count-created">0</span></button>
+        <button class="filter-pill" onclick="filterByStatus('IN_PRODUCTION')">In Production <span class="pill-count" id="count-inprod">0</span></button>
+        <button class="filter-pill" onclick="filterByStatus('QA_REVIEW')">QA Review <span class="pill-count" id="count-qareview">0</span></button>
+        <button class="filter-pill" onclick="filterByStatus('APPROVED')">Approved <span class="pill-count" id="count-approved">0</span></button>
+        <button class="filter-pill filter-recalled" onclick="filterByStatus('RECALLED')"><i class="fas fa-triangle-exclamation text-danger"></i> Quarantined <span class="pill-count" id="count-recalled">0</span></button>
     </div>
 
     <!-- Batches Table -->
@@ -268,6 +292,149 @@
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" id="confirmImportBtn" class="btn btn-success" onclick="executeBatchImport()" disabled>
                     <i class="fas fa-cloud-arrow-up me-1"></i>Import Batches
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Certificate of Analysis (CoA) Modal -->
+<div class="modal fade" id="certificateModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title fw-bold">
+                    <i class="fas fa-file-contract text-primary me-2"></i>Certificate of Analysis (CoA) & Digital Traveler
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="coa-sheet" id="coaPrintSheet">
+                    <div class="coa-watermark" id="coaWatermark">OFFICIAL CoA</div>
+                    
+                    <div class="coa-header d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <span class="badge bg-primary">GMP CERTIFIED</span>
+                                <span class="badge bg-secondary">ISO 9001:2015</span>
+                                <span class="badge bg-secondary">FDA 21 CFR Part 11</span>
+                            </div>
+                            <h4 class="fw-bold mb-0 text-dark">Apex BioPharma & Precision Manufacturing</h4>
+                            <div class="small text-secondary">Quality Assurance & Regulatory Compliance Division</div>
+                        </div>
+                        <div class="text-end">
+                            <div class="small text-uppercase text-secondary fw-bold">Document Ref</div>
+                            <div class="fw-bold text-dark font-monospace" id="coaDocRef">CoA-2026-9842</div>
+                        </div>
+                    </div>
+
+                    <!-- SVG Barcode Box -->
+                    <div class="barcode-box">
+                        <svg id="coaBarcodeSvg" class="barcode-svg" viewBox="0 0 300 50"></svg>
+                        <div class="barcode-label" id="coaBarcodeText">*B-9842*</div>
+                    </div>
+
+                    <!-- Specification Table -->
+                    <table class="table table-bordered coa-table mb-4">
+                        <tbody>
+                            <tr>
+                                <th>Batch Identifier (Lot #)</th>
+                                <td class="fw-bold font-monospace" id="coaBatchId">B-9842</td>
+                            </tr>
+                            <tr>
+                                <th>Product Name & Strength</th>
+                                <td class="fw-semibold text-primary" id="coaProductName">Paracetamol 500mg USP</td>
+                            </tr>
+                            <tr>
+                                <th>Manufacturing Facility</th>
+                                <td id="coaFacility">Cleanroom Facility Line A (ISO-7)</td>
+                            </tr>
+                            <tr>
+                                <th>Lot Quantity (Batch Size)</th>
+                                <td id="coaQuantity">12,500 units</td>
+                            </tr>
+                            <tr>
+                                <th>Date of Manufacture</th>
+                                <td id="coaMfgDate">2026-10-12</td>
+                            </tr>
+                            <tr>
+                                <th>Expiration Date</th>
+                                <td id="coaExpDate">2028-10-12</td>
+                            </tr>
+                            <tr>
+                                <th>Analytical Quality Assay</th>
+                                <td class="fw-bold text-success" id="coaQualityScore">99.8% (Pharmacopeia Grade)</td>
+                            </tr>
+                            <tr>
+                                <th>Lead QA Analyst / Inspector</th>
+                                <td id="coaInspector">Dr. A. Sharma (QA Lead)</td>
+                            </tr>
+                            <tr>
+                                <th>Release Disposition</th>
+                                <td id="coaStatusBadge"><span class="badge bg-success">PASSED & RELEASED</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
+                        <div class="digital-signature-seal" id="coaSeal">
+                            <i class="fas fa-certificate fa-2x text-success"></i>
+                            <div>
+                                <div class="fw-bold text-dark small">SECURE ELECTRONIC SIGN-OFF</div>
+                                <div class="text-muted" style="font-size: 0.72rem;">Cryptographically verified via CI/CD Traceability System</div>
+                            </div>
+                        </div>
+                        <div class="text-end text-muted small">
+                            <div>System Timestamp: <span id="coaTimestamp">2026-10-12</span></div>
+                            <div style="font-size: 0.7rem;">Automated Verification Pass</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="window.print()">
+                    <i class="fas fa-print me-1"></i>Print Certificate
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quarantine & Recall Modal -->
+<div class="modal fade" id="recallModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title fw-bold">
+                    <i class="fas fa-triangle-exclamation me-2"></i>Emergency Quality Quarantine & Recall
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="alert alert-warning small mb-3">
+                    <i class="fas fa-circle-exclamation me-1"></i>
+                    Quarantining a batch locks shipment authorization, changes the status to <strong>RECALLED</strong>, and appends an immutable compliance alert to the audit trail.
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold text-secondary small text-uppercase">Target Batch ID</label>
+                    <input type="text" id="recallBatchIdInput" class="form-control font-monospace bg-light" readonly>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold text-secondary small text-uppercase">Reason for Quarantine</label>
+                    <select id="recallReasonSelect" class="form-select">
+                        <option value="Suspected deviation in cold-chain logistics">Suspected deviation in cold-chain logistics</option>
+                        <option value="Potency assay out-of-specification (OOS)">Potency assay out-of-specification (OOS)</option>
+                        <option value="Particulate matter detected in QA visual inspection">Particulate matter detected in QA visual inspection</option>
+                        <option value="Packaging seal integrity compromise">Packaging seal integrity compromise</option>
+                        <option value="Supplier raw material contamination alert">Supplier raw material contamination alert</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" onclick="executeRecall()">
+                    <i class="fas fa-triangle-exclamation me-1"></i>Confirm Quarantine Hold
                 </button>
             </div>
         </div>
