@@ -12,6 +12,8 @@ pipeline {
         IMAGE_TAG = "v1.2.${env.BUILD_NUMBER}"
         IMAGE_FULL = "${params.DOCKER_REGISTRY}/${APP_NAME}:${IMAGE_TAG}"
         IMAGE_LATEST = "${params.DOCKER_REGISTRY}/${APP_NAME}:latest"
+        MAVEN_OPTS = '-Xms64m -Xmx384m -XX:+UseSerialGC'
+        _JAVA_OPTIONS = '-Xms64m -Xmx384m -XX:+UseSerialGC'
     }
 
     stages {
@@ -33,7 +35,7 @@ pipeline {
                     if (isUnix()) {
                         sh 'mvn clean package -DskipTests'
                     } else {
-                        bat 'mvn clean package -DskipTests'
+                        bat 'set "MAVEN_OPTS=-Xms64m -Xmx384m -XX:+UseSerialGC" && set "_JAVA_OPTIONS=-Xms64m -Xmx384m -XX:+UseSerialGC" && mvn clean package -DskipTests'
                     }
                 }
             }
@@ -48,7 +50,7 @@ pipeline {
                     if (isUnix()) {
                         sh 'mvn test'
                     } else {
-                        bat 'mvn test'
+                        bat 'set "MAVEN_OPTS=-Xms64m -Xmx384m -XX:+UseSerialGC" && set "_JAVA_OPTIONS=-Xms64m -Xmx384m -XX:+UseSerialGC" && mvn test'
                     }
                 }
             }
