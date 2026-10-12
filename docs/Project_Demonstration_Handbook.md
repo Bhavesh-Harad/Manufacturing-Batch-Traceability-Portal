@@ -93,12 +93,16 @@ flowchart LR
 
 ### 🔹 Stage 4: Live Web Application Walkthrough (1 min)
 1. Open Chrome $\rightarrow$ **`http://localhost:8080`**
-2. Demonstrate the 4 core features:
-   * **Dashboard Summary:** Point out total batches and the real-time Chart.js status distribution donut chart.
-   * **Create Batch:** Click *"Create New Batch"*, enter Product Name `VIVA-BATCH-101`, Quantity `500`, click *Save*. (Points out status starts as `CREATED`).
-   * **Search & Filter:** Type `VIVA` in search bar to show instant filtering.
-   * **Status Progression:** Click the Action dropdown on the batch $\rightarrow$ change from `CREATED` $\rightarrow$ `IN_PRODUCTION` $\rightarrow$ `QA_REVIEW` $\rightarrow$ `APPROVED`.
-   * **CSV Export:** Click *"Export to CSV"* to download real-time production audit data.
+2. Demonstrate the enhanced industry-grade features:
+   * **Dashboard Summary & Charts:** Point out total batches and the real-time Chart.js status distribution donut chart.
+   * **1-Click Status Filter Pills:** Click the filter pills (`All`, `Created`, `In Production`, `QA Review`, `Approved`, `🚨 Quarantined`) to demonstrate instant tabular filtering.
+   * **Official Certificate of Analysis (CoA) & SVG Barcode:** Click the **`CoA`** button next to batch `B-9842`. Show the formal inspection traveler document featuring a vector SVG barcode, lot details, analytical assay purity score (`99.8%`), and digital QA cryptographic seal. Click *"Print Certificate"* to show print-ready layout.
+   * **Emergency Quality Quarantine & Recall:** Click the Action dropdown on batch `B-7319` $\rightarrow$ Select **`Quarantine / Recall`** $\rightarrow$ Confirm reason *"Suspected deviation in cold-chain logistics"*. Point out how:
+     - The top **Regulatory Quarantine Banner** activates in red.
+     - The row highlights in red with a prominent hold reason.
+     - The Certificate of Analysis dynamically stamps **`QUARANTINED`**.
+   * **Traceability Timeline Audit Trail:** Click on any Batch ID pill (e.g. `B-9842`) to show the immutable chronological audit log.
+   * **CSV Bulk Import & Export:** Show 1-click export and import capabilities.
 
 ---
 
