@@ -55,7 +55,10 @@ public class PortalUITest {
         }
 
         ChromeOptions options = new ChromeOptions();
-        options.addArguments("--headless");
+        String headlessProp = System.getProperty("headless", "true");
+        if (!"false".equalsIgnoreCase(headlessProp)) {
+            options.addArguments("--headless");
+        }
         options.addArguments("--no-sandbox");
         options.addArguments("--disable-dev-shm-usage");
         options.addArguments("--disable-gpu");
