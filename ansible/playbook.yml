@@ -1,0 +1,106 @@
+---
+# ==============================================================================
+# Ansible Configuration Management Playbook
+# Target: Manufacturing Batch Traceability Portal Server Node
+# ==============================================================================
+- name: Configure Target Node for Manufacturing Batch Traceability Portal
+  hosts: all
+  become: yes
+  vars:
+    app_name: "traceability-portal"
+    app_user: "traceadmin"
+    app_group: "traceability"
+    app_base_dir: "/opt/traceability-portal"
+    app_port: 8080
+    required_packages:
+      - curl
+      - git
+      - openjdk-17-jre-headless
+      - docker.io
+      - python3-pip
+      - python3-docker
+      - ufw
+
+  tasks:
+    - name: Update APT package cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
+      ignore_errors: yes
+
+    - name: Ensure all prerequisite system packages are installed
+      package:
+        name: "{{ required_packages }}"
+        state: present
+      ignore_errors: yes
+
+    - name: Ensure dedicated system group exists
+      group:
+        name: "{{ app_group }}"
+        state: present
+
+    - name: Ensure dedicated service user exists
+      user:
+        name: "{{ app_user }}"
+        group: "{{ app_group }}"
+        groups: "docker"
+        append: yes
+        shell: /bin/bash
+        home: "/home/{{ app_user }}"
+        create_home: yes
+        state: present
+
+    - name: Create required directory structure
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: '0755'
+      loop:
+        - "{{ app_base_dir }}"
+        - "{{ app_base_dir }}/config"
+        - "{{ app_base_dir }}/logs"
+        - "{{ app_base_dir }}/data"
+
+    - name: Deploy application environment configuration
+      copy:
+        dest: "{{ app_base_dir }}/config/application.properties"
+        content: |
+          # Manufacturing Batch Traceability Portal Configuration
+          server.port={{ app_port }}
+          spring.application.name={{ app_name }}
+          logging.file.name={{ app_base_dir }}/logs/app.log
+          logging.level.com.example.traceability=INFO
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: '0644'
+
+    - name: Ensure Docker service is enabled and started
+      service:
+        name: docker
+        state: started
+        enabled: yes
+      ignore_errors: yes
+
+    - name: Configure firewall to allow HTTP traffic on application port
+      ufw:
+        rule: allow
+        port: "{{ app_port | string }}"
+        proto: tcp
+      when: ansible_os_family == "Debian"
+      ignore_errors: yes
+
+    - name: Verify application directory permissions and readiness
+      stat:
+        path: "{{ app_base_dir }}"
+      register: app_dir_status
+
+    - name: Assert application base directory is properly provisioned
+      assert:
+        that:
+          - app_dir_status.stat.exists
+          - app_dir_status.stat.isdir
+        fail_msg: "Application base directory provision failed."
+        success_msg: "Node prerequisites successfully configured for Batch Traceability Portal!"

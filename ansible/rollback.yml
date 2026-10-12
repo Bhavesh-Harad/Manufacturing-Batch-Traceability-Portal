@@ -1,0 +1,58 @@
+---
+# ==============================================================================
+# Ansible Automated Rollback & Recovery Playbook
+# ==============================================================================
+- name: Emergency Rollback to Previous Stable Release
+  hosts: all
+  become: yes
+  vars:
+    app_name: "traceability-portal"
+    app_image: "docker.io/bharad/traceability-portal"
+    previous_stable_version: "v1.2.13"
+    app_port: 8080
+    container_name: "traceability-portal-container"
+
+  tasks:
+    - name: Log rollback initiation
+      debug:
+        msg: "CRITICAL: Rolling back {{ container_name }} to previous stable release {{ previous_stable_version }}..."
+
+    - name: Stop and remove malfunctioning current container
+      command: "docker rm -f {{ container_name }}"
+      register: stop_current
+      changed_when: stop_current.rc == 0
+
+    - name: Deploy previous stable container release
+      command: >
+        docker run -d
+        --name {{ container_name }}
+        -p {{ app_port }}:8080
+        --restart unless-stopped
+        {{ app_image }}:{{ previous_stable_version }}
+      register: rollback_deploy
+      changed_when: rollback_deploy.rc == 0
+
+    - name: Wait for recovered container service to become responsive
+      wait_for:
+        port: "{{ app_port }}"
+        delay: 5
+        timeout: 45
+      ignore_errors: yes
+
+    - name: Validate health of rolled-back container
+      uri:
+        url: "http://localhost:{{ app_port }}/api/batches"
+        method: GET
+        status_code: 200
+      register: recovered_health
+      retries: 3
+      delay: 2
+      until: recovered_health.status == 200
+      ignore_errors: yes
+
+    - name: Assert recovery was successful
+      assert:
+        that:
+          - recovered_health.status == 200
+        fail_msg: "Rollback failed to restore healthy service."
+        success_msg: "ROLLBACK COMPLETE: Service successfully restored to stable release {{ previous_stable_version }}."
