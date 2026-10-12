@@ -651,27 +651,159 @@ async function openCertificateModal(id) {
         document.getElementById('coaQuantity').innerText = (batch.quantity || 0).toLocaleString() + ' units';
         document.getElementById('coaMfgDate').innerText = batch.mfgDate || new Date().toISOString().split('T')[0];
         document.getElementById('coaExpDate').innerText = batch.expDate || '2028-10-12';
-        document.getElementById('coaQualityScore').innerText = batch.qualityScore || '99.4% (Pharmacopeia Grade)';
         document.getElementById('coaInspector').innerText = batch.inspector || 'Dr. A. Sharma (QA Lead)';
         document.getElementById('coaDocRef').innerText = `CoA-2026-${batch.id.replace(/[^A-Za-z0-9]/g, '')}`;
         document.getElementById('coaTimestamp').innerText = new Date().toLocaleString();
         document.getElementById('coaBarcodeText').innerText = `*${batch.id}*`;
 
-        const isRecalled = batch.recalled || batch.status === 'RECALLED';
         const watermark = document.getElementById('coaWatermark');
         const seal = document.getElementById('coaSeal');
         const statusBadge = document.getElementById('coaStatusBadge');
+        const qualityScoreEl = document.getElementById('coaQualityScore');
+        const headerBadges = document.getElementById('coaHeaderBadges');
+        const subTitle = document.getElementById('coaSubTitle');
+
+        // Reset class attributes
+        watermark.className = 'coa-watermark';
+        seal.className = 'digital-signature-seal';
+
+        const status = (batch.status || '').toUpperCase();
+        const isRecalled = batch.recalled || status === 'RECALLED';
 
         if (isRecalled) {
             watermark.innerText = 'QUARANTINED';
             watermark.classList.add('quarantined');
             seal.classList.add('quarantined');
-            statusBadge.innerHTML = `<span class="badge bg-danger">HOLD / QUARANTINED</span><div class="small text-danger mt-1">Reason: ${batch.recallReason || 'Suspected deviation'}</div>`;
+            if (headerBadges) {
+                headerBadges.innerHTML = `
+                    <span class="badge bg-danger">REGULATORY QUARANTINE</span>
+                    <span class="badge bg-danger">HOLD IMPOSED</span>
+                    <span class="badge bg-secondary">FDA 21 CFR Part 11</span>
+                `;
+            }
+            if (subTitle) subTitle.innerText = "Regulatory Safety & Quality Compliance Division — HOLD NOTICE";
+            qualityScoreEl.className = "fw-bold text-danger";
+            qualityScoreEl.innerText = `HOLD: Deviation Detected (${batch.recallReason || 'Cold-Chain Deviation'})`;
+            statusBadge.innerHTML = `
+                <span class="badge bg-danger"><i class="fas fa-triangle-exclamation me-1"></i>MANDATORY REGULATORY QUARANTINE</span>
+                <div class="small text-danger mt-1"><strong>Reason:</strong> ${batch.recallReason || 'Cold-chain or potency deviation under active investigation'}</div>
+            `;
+            seal.innerHTML = `
+                <i class="fas fa-triangle-exclamation fa-2x text-danger"></i>
+                <div>
+                    <div class="fw-bold text-danger small">REGULATORY QUARANTINE ACTIVE</div>
+                    <div class="text-danger" style="font-size: 0.72rem;">Shipment authorization revoked. Quarantine locks in effect.</div>
+                </div>
+            `;
+        } else if (status === 'APPROVED') {
+            watermark.innerText = 'APPROVED CoA';
+            watermark.classList.add('approved');
+            seal.classList.add('approved');
+            if (headerBadges) {
+                headerBadges.innerHTML = `
+                    <span class="badge bg-success">RELEASED</span>
+                    <span class="badge bg-primary">GMP CERTIFIED</span>
+                    <span class="badge bg-secondary">ISO 9001:2015</span>
+                `;
+            }
+            if (subTitle) subTitle.innerText = "Quality Assurance & Regulatory Compliance Division";
+            qualityScoreEl.className = "fw-bold text-success";
+            qualityScoreEl.innerText = batch.qualityScore || "99.8% (Pharmacopeia Grade Compliant)";
+            statusBadge.innerHTML = `<span class="badge bg-success"><i class="fas fa-circle-check me-1"></i>PASSED & AUTHORIZED FOR COMMERCE</span>`;
+            seal.innerHTML = `
+                <i class="fas fa-certificate fa-2x text-success"></i>
+                <div>
+                    <div class="fw-bold text-dark small">SECURE ELECTRONIC RELEASE SIGN-OFF</div>
+                    <div class="text-muted" style="font-size: 0.72rem;">Cryptographically verified release for commercial distribution</div>
+                </div>
+            `;
+        } else if (status === 'IN_PRODUCTION') {
+            watermark.innerText = 'WORK IN PROGRESS';
+            watermark.classList.add('in-production');
+            seal.classList.add('in-production');
+            if (headerBadges) {
+                headerBadges.innerHTML = `
+                    <span class="badge bg-warning text-dark">IN PRODUCTION</span>
+                    <span class="badge bg-secondary">WORK IN PROGRESS (WIP)</span>
+                    <span class="badge bg-secondary">GMP CONTROLS</span>
+                `;
+            }
+            if (subTitle) subTitle.innerText = "Manufacturing Plant Floor — In-Process Routing Traveler";
+            qualityScoreEl.className = "fw-bold text-warning";
+            qualityScoreEl.innerText = "In-Process Control Assay (99.1% In-Line Yield Verified)";
+            statusBadge.innerHTML = `<span class="badge bg-warning text-dark"><i class="fas fa-gears me-1"></i>IN PRODUCTION (NOT CLEARED FOR DISTRIBUTION)</span>`;
+            seal.innerHTML = `
+                <i class="fas fa-gears fa-2x text-warning"></i>
+                <div>
+                    <div class="fw-bold text-dark small">IN-PROCESS PRODUCTION ROUTING TRAVELER</div>
+                    <div class="text-muted" style="font-size: 0.72rem;">Shop-floor production order in active synthesis / machining.</div>
+                </div>
+            `;
+        } else if (status === 'QA_REVIEW') {
+            watermark.innerText = 'QA EVALUATION';
+            watermark.classList.add('qa-review');
+            seal.classList.add('qa-review');
+            if (headerBadges) {
+                headerBadges.innerHTML = `
+                    <span class="badge bg-info text-dark">QA EVALUATION</span>
+                    <span class="badge bg-secondary">ANALYTICAL SAMPLING</span>
+                    <span class="badge bg-secondary">HOLD FOR RELEASE</span>
+                `;
+            }
+            if (subTitle) subTitle.innerText = "Quality Control Laboratories — Analytical Testing In Progress";
+            qualityScoreEl.className = "fw-bold text-info";
+            qualityScoreEl.innerText = "Analytical Bio-Assay & HPLC In Progress (Awaiting Sign-Off)";
+            statusBadge.innerHTML = `<span class="badge bg-info text-dark"><i class="fas fa-microscope me-1"></i>UNDER QUALITY ASSURANCE REVIEW</span>`;
+            seal.innerHTML = `
+                <i class="fas fa-microscope fa-2x text-info"></i>
+                <div>
+                    <div class="fw-bold text-dark small">QC LABORATORY EVALUATION IN PROGRESS</div>
+                    <div class="text-muted" style="font-size: 0.72rem;">Assays pending final chromatographic and microbiology sign-off.</div>
+                </div>
+            `;
+        } else if (status === 'REJECTED') {
+            watermark.innerText = 'REJECTED';
+            watermark.classList.add('rejected');
+            seal.classList.add('rejected');
+            if (headerBadges) {
+                headerBadges.innerHTML = `
+                    <span class="badge bg-danger">DISPOSITION: REJECTED</span>
+                    <span class="badge bg-secondary">OUT-OF-SPEC (OOS)</span>
+                `;
+            }
+            if (subTitle) subTitle.innerText = "Quality Non-Conformance & Disposal Department";
+            qualityScoreEl.className = "fw-bold text-danger";
+            qualityScoreEl.innerText = "NON-CONFORMANCE: Failed acceptance criteria (Below 98% threshold)";
+            statusBadge.innerHTML = `<span class="badge bg-danger"><i class="fas fa-circle-xmark me-1"></i>REJECTED — FAILED SPECIFICATIONS</span>`;
+            seal.innerHTML = `
+                <i class="fas fa-ban fa-2x text-danger"></i>
+                <div>
+                    <div class="fw-bold text-danger small">QUALITY REJECTION NOTICE</div>
+                    <div class="text-danger" style="font-size: 0.72rem;">Material scrapped or assigned for corrective rework.</div>
+                </div>
+            `;
         } else {
-            watermark.innerText = 'OFFICIAL CoA';
-            watermark.classList.remove('quarantined');
-            seal.classList.remove('quarantined');
-            statusBadge.innerHTML = `<span class="badge bg-success">PASSED & RELEASED</span>`;
+            // CREATED
+            watermark.innerText = 'REGISTERED LOT';
+            watermark.classList.add('created');
+            seal.classList.add('created');
+            if (headerBadges) {
+                headerBadges.innerHTML = `
+                    <span class="badge bg-secondary">REGISTERED</span>
+                    <span class="badge bg-secondary">PENDING DISPENSING</span>
+                `;
+            }
+            if (subTitle) subTitle.innerText = "Manufacturing ERP Intake & Production Planning Order";
+            qualityScoreEl.className = "fw-bold text-secondary";
+            qualityScoreEl.innerText = "Awaiting Raw Material Dispensing & Initial Floor Setup";
+            statusBadge.innerHTML = `<span class="badge bg-secondary"><i class="fas fa-clock me-1"></i>REGISTERED (AWAITING LINE ALLOCATION)</span>`;
+            seal.innerHTML = `
+                <i class="fas fa-clipboard-list fa-2x text-secondary"></i>
+                <div>
+                    <div class="fw-bold text-dark small">INITIAL BATCH REGISTRATION ORDER</div>
+                    <div class="text-muted" style="font-size: 0.72rem;">Order registered. Cleanroom line assignment scheduled.</div>
+                </div>
+            `;
         }
 
         generateBarcodeSVG(batch.id);
